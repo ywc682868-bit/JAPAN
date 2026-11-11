@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>奶油雜貨店 - 管理後台</title>
+  <title>奶油雜貨店 - 莫蘭迪質感管理後台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- 引入 SheetJS 匯出 Excel 函式庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script type="importmap">
     {
       "imports": {
@@ -26,7 +28,7 @@
       </div>
       <div>
         <h2 class="text-xl font-bold text-[#4A4543]">管理員安全登入</h2>
-        <p class="text-xs text-[#7A726E] mt-1">請輸入後台管理帳號</p>
+        <p class="text-xs text-[#7A726E] mt-1">請輸入莫蘭迪聖誕後台管理帳號</p>
       </div>
       <form onsubmit="handleLogin(event)" class="space-y-3 text-left">
         <div>
@@ -64,7 +66,9 @@
 
     <!-- 1. 採購總統計表 -->
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
-      <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單</h3>
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單</h3>
+      </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead>
@@ -82,9 +86,14 @@
       </div>
     </div>
 
-    <!-- 2. 排隊出貨清單 -->
+    <!-- 2. 排隊出貨清單 (包含匯出 Excel 按鈕) -->
     <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
-      <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單時間排序之客戶訂單</h3>
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單時間排序之客戶訂單</h3>
+        <button onclick="exportToExcel()" class="px-4 py-2 bg-[#8F9E93] hover:bg-[#7E8D82] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2">
+          <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
+        </button>
+      </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead>
@@ -106,7 +115,7 @@
     <!-- 3. 商品定價與縮圖管理 -->
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-6">
       <div class="border border-[#D5D0CC] p-5 rounded-2xl bg-[#FAF9F7] space-y-4">
-        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
+        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品（自動轉 1:1 正方形圖）</h3>
         <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
@@ -123,7 +132,6 @@
         </form>
       </div>
 
-      <!-- 商品卡片列表（包含 1:1 正方形縮圖） -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="admin-product-grid"></div>
     </div>
   </div>
@@ -259,6 +267,44 @@
       });
     }
 
+    // 匯出 Excel 功能
+    window.exportToExcel = function() {
+      if (!orders || orders.length === 0) {
+        alert("目前尚無訂單可供匯出！");
+        return;
+      }
+
+      // 整理要寫入 Excel 的欄位資料
+      const excelData = orders.map((o, idx) => ({
+        "項次": idx + 1,
+        "下單時間": o.createdAtStr || "",
+        "來源平台": o.platform || "",
+        "買家 ID/暱稱": o.customerName || "",
+        "訂購商品明細": (o.items || []).map(i => `${i.name}(${i.spec || '預設'}) x ${i.qty}`).join("\n"),
+        "訂單總金額 (NT$)": o.totalAmount || 0
+      }));
+
+      // 使用 SheetJS 產生活頁簿與工作表
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      
+      // 設定欄寬優化閱讀排版
+      worksheet['!cols'] = [
+        { wch: 6 },   // 項次
+        { wch: 22 },  // 時間
+        { wch: 12 },  // 平台
+        { wch: 18 },  // 買家
+        { wch: 40 },  // 明細
+        { wch: 16 }   // 金額
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "排隊出貨清單");
+
+      // 產生日期字串命名檔案（例如：奶油雜貨店_出貨清單_2026-02-11.xlsx）
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `奶油雜貨店_出貨清單_${today}.xlsx`);
+    };
+
     function processSquareImage(file, callback) {
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -340,9 +386,9 @@
       document.getElementById("edit-id").value = "";
       document.getElementById("p-name").value = "";
       document.getElementById("p-spec").value = "";
-      document.getElementById("p-price").value = "";
+      document.getElementById("p-[#p-price]").value = "";
       document.getElementById("p-image-file").value = "";
-      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-gift text-[#B08889]"></i> 新增上架商品（自動轉 1:1 正方形圖）`;
+      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-gift text-[#B08889]"></i> 新增上架商品`;
       document.getElementById("submit-btn").innerText = "確認上架";
       document.getElementById("cancel-edit-btn").classList.add("hidden");
     };
