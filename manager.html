@@ -59,9 +59,9 @@
 
     <!-- 標籤導覽 -->
     <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-hidden shadow-sm p-1 gap-1">
-      <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 py-2.5 font-bold text-sm bg-[#B08889] text-white rounded-xl transition-all">採購總統計表</button>
-      <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">排隊出貨清單</button>
-      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">商品定價與縮圖管理</button>
+      <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 py-2.5 font-bold text-sm bg-[#B08889] text-white rounded-xl transition-all">採購統計</button>
+      <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">排隊清單</button>
+      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">商品管理</button>
     </div>
 
     <!-- 1. 採購總統計表 -->
@@ -115,14 +115,14 @@
     <!-- 3. 商品定價與縮圖管理 -->
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-6">
       <div class="border border-[#D5D0CC] p-5 rounded-2xl bg-[#FAF9F7] space-y-4">
-        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品（自動轉 1:1 正方形圖）</h3>
+        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
         <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
           <input type="text" id="p-spec" placeholder="規格/顏色" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
           <input type="number" id="p-price" required placeholder="單價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
           <div>
-            <label class="block text-xs text-[#7A726E] mb-1">上傳圖片 (自動縮成 1:1 正方形)</label>
+            <label class="block text-xs text-[#7A726E] mb-1">上傳圖片</label>
             <input type="file" id="p-image-file" accept="image/*" class="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#8F9E93]/20 file:text-[#4A4543] hover:file:bg-[#8F9E93]/30">
           </div>
           <div class="flex gap-2">
