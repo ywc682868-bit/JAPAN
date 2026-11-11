@@ -284,18 +284,18 @@
       orders.forEach(o => (o.items || []).forEach(i => {
         const cleanName = (i.name || '').replace(/["']/g, '').trim();
         const cleanSpec = (i.spec || '').trim();
-        const rawKey = `${cleanName}_${cleanSpec || '預設'}`;
+        const rawKey = `${cleanName}_${cleanSpec}`;
         const key = sanitizeKey(rawKey);
         
         if (!map[key]) {
-          map[key] = { name: cleanName, spec: cleanSpec, price: i.price, totalQty: 0 };
+          map[key] = { name: cleanName, spec: cleanSpec, price: i.price, totalQty: 0, key };
         }
         map[key].totalQty += i.qty;
       }));
 
       Object.keys(map).forEach(k => {
         const item = map[k], checked = checkedStatus[k] || false;
-        const currentLocalPrice = localPrices[k] !== undefined ? localPrices[k] : "";
+        const currentLocalPrice = localPrices[k] !== undefined && localPrices[k] !== null ? localPrices[k] : "";
         const numericPrice = parseFloat(currentLocalPrice) || 0;
         const subtotalLocal = numericPrice * item.totalQty;
 
@@ -312,10 +312,10 @@
           </tr>`;
       });
 
-      calculateTotals();
+      calculateTotals(map);
     };
 
-    window.calculateTotals = function() {
+    window.calculateTotals = function(map) {
       const localTotalEl = document.getElementById("procurement-local-total");
       const twdTotalEl = document.getElementById("procurement-twd-total");
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
@@ -323,14 +323,21 @@
 
       let grandLocalTotal = 0;
 
-      Object.keys(localPrices).forEach(k => {
-        const price = parseFloat(localPrices[k]) || 0;
-        const qtyEl = document.getElementById(`qty-${k}`);
-        if (qtyEl) {
-          const qty = parseInt(qtyEl.innerText) || 0;
-          grandLocalTotal += price * qty;
-        }
-      });
+      if (map) {
+        Object.keys(map).forEach(k => {
+          const price = parseFloat(localPrices[k]) || 0;
+          grandLocalTotal += price * map[k].totalQty;
+        });
+      } else {
+        Object.keys(localPrices).forEach(k => {
+          const price = parseFloat(localPrices[k]) || 0;
+          const qtyEl = document.getElementById(`qty-${k}`);
+          if (qtyEl) {
+            const qty = parseInt(qtyEl.innerText) || 0;
+            grandLocalTotal += price * qty;
+          }
+        });
+      }
 
       if (localTotalEl) localTotalEl.innerText = `${currencySymbol} ${grandLocalTotal.toLocaleString()}`;
       if (twdTotalEl) {
@@ -341,34 +348,35 @@
 
     window.updateLocalPrice = function(key, val, qty) {
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
-      const numericVal = val === "" ? 0 : (parseFloat(val) || 0);
+      const numericVal = val === "" ? null : parseFloat(val);
       
-      localPrices[key] = val === "" ? null : numericVal;
+      localPrices[key] = numericVal;
       
       const subtotalEl = document.getElementById(`subtotal-${key}`);
       if (subtotalEl) {
-        subtotalEl.innerText = `${currencySymbol} ${(numericVal * qty).toLocaleString()}`;
+        const currentNum = numericVal || 0;
+        subtotalEl.innerText = `${currencySymbol} ${(currentNum * qty).toLocaleString()}`;
       }
       
       calculateTotals();
-      set(ref(db, `procurement_local_prices/${key}`), val === "" ? null : numericVal);
+      set(ref(db, `procurement_local_prices/${key}`), numericVal);
     };
 
-    // 取得平台莫蘭迪專屬配色標籤（修正 Threads 白底白字問題）
-function getPlatformBadge(platform) {
-  const p = (platform || '').trim();
-  let bgClass = "bg-[#8F9E93]"; // 預設莫蘭迪鼠尾草綠 (LINE)
+    function getPlatformBadge(platform) {
+      const p = (platform || '').trim();
+      const pUpper = p.toUpperCase();
+      let bgColor = "#8F9E93";
 
-  if (p.toLowerCase() === "threads") {
-    bgClass = "bg-[#3A3837]"; // 莫蘭迪深黑
-  } else if (p.toUpperCase() === "IG" || p.toLowerCase().includes("instagram")) {
-    bgClass = "bg-[#B08889]"; // 莫蘭迪乾燥玫瑰紅
-  } else if (p.toUpperCase() === "FB" || p.toLowerCase().includes("facebook")) {
-    bgClass = "bg-[#6C7D8E]"; // 莫蘭迪灰藍
-  }
+      if (pUpper === "THREADS") {
+        bgColor = "#3A3837";
+      } else if (pUpper === "IG" || pUpper.includes("INSTAGRAM")) {
+        bgColor = "#B08889";
+      } else if (pUpper === "FB" || pUpper.includes("FACEBOOK")) {
+        bgColor = "#6C7D8E";
+      }
 
-  return `<span class="${bgClass} text-white px-2.5 py-1 rounded-lg text-xs font-semibold inline-block shadow-xs">${p || 'LINE'}</span>`;
-}
+      return `<span style="background-color: ${bgColor} !important; color: #FFFFFF !important;" class="px-2.5 py-1 rounded-lg text-xs font-semibold inline-block shadow-xs">${p || 'LINE'}</span>`;
+    }
 
     function renderQueue() {
       const tbody = document.getElementById("queue-tbody");
