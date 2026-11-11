@@ -218,13 +218,10 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    window.db = db;
-    window.ref = ref;
-    window.set = set;
-
     let catalog = {}, orders = [], checkedStatus = {}, localPrices = {};
     let draggedItemId = null;
     let draggedOrderId = null;
+    let activeInputKey = null; // 紀錄目前正在輸入焦點中的欄位 Key
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -282,6 +279,12 @@
     window.renderProcurement = function() {
       const tbody = document.getElementById("procurement-tbody");
       if (!tbody) return;
+
+      // 如果使用者正在某個單價欄位中輸入數字，跳過整個重繪保護游標焦點
+      if (activeInputKey && document.getElementById(`input-price-${activeInputKey}`) === document.activeElement) {
+        return;
+      }
+      
       tbody.innerHTML = "";
       
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
@@ -314,7 +317,11 @@
             <td class="p-2 sm:p-3 text-[#7A726E]">${item.spec || '-'}</td>
             <td class="p-2 sm:p-3 text-right font-black text-[#B08889] text-sm sm:text-base" id="qty-${k}">${item.totalQty}</td>
             <td class="p-2 sm:p-3 text-right">
-              <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" class="w-20 sm:w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
+              <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" 
+                onfocus="activeInputKey='${k}'" 
+                onblur="onPriceBlur('${k}', this.value)" 
+                oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" 
+                class="w-20 sm:w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
             </td>
             <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
           </tr>`;
@@ -359,6 +366,7 @@
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
       const numericVal = (val === "" || val === null || val === undefined) ? null : parseFloat(val);
       
+      // 動態更新本地變數與畫面，但不破壞焦點
       localPrices[key] = numericVal;
       
       const subtotalEl = document.getElementById(`subtotal-${key}`);
@@ -369,10 +377,19 @@
       
       calculateTotals();
 
+      // 防抖寫入：停止輸入 800ms 後才寫入 Firebase
       if (priceSaveTimer[key]) clearTimeout(priceSaveTimer[key]);
       priceSaveTimer[key] = setTimeout(() => {
         set(ref(db, `procurement_local_prices/${key}`), numericVal);
-      }, 300);
+      }, 800);
+    };
+
+    // 離開輸入框時立即寫入 Firebase 並解除焦點保護
+    window.onPriceBlur = function(key, val) {
+      activeInputKey = null;
+      const numericVal = (val === "" || val === null || val === undefined) ? null : parseFloat(val);
+      if (priceSaveTimer[key]) clearTimeout(priceSaveTimer[key]);
+      set(ref(db, `procurement_local_prices/${key}`), numericVal);
     };
 
     function getPlatformBadge(platform) {
