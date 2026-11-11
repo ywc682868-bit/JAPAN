@@ -4,23 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>奶油雜貨店 - 日本連線</title>
-  <!-- 引入標準靜態 Tailwind CSS 避免 Console 警告 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- 保留並補全莫蘭迪配色樣式定義 -->
   <style>
     body { background-color: #EFECE9 !important; color: #4A4543 !important; }
-    .bg-morandi-bg { background-color: #EFECE9 !important; }
     .bg-morandi-card { background-color: #F8F6F4 !important; }
-    .bg-morandi-[#B08889], .bg-rose-pink { background-color: #B08889 !important; }
-    .bg-morandi-[#8F9E93], .bg-sage-green { background-color: #8F9E93 !important; }
+    .bg-rose-pink { background-color: #B08889 !important; }
+    .bg-sage-green { background-color: #8F9E93 !important; }
     .text-morandi-pink { color: #B08889 !important; }
     .text-morandi-dark { color: #4A4543 !important; }
     .text-morandi-sub { color: #7A726E !important; }
     .border-morandi { border-color: #D5D0CC !important; }
     
-    /* 支援自訂十六進位顏色的相容 Class */
     .bg-\[\#EFECE9\] { background-color: #EFECE9 !important; }
     .bg-\[\#F8F6F4\] { background-color: #F8F6F4 !important; }
     .bg-\[\#B08889\] { background-color: #B08889 !important; }
@@ -60,7 +56,6 @@
   </header>
 
   <main class="max-w-6xl mx-auto px-4 mt-6">
-    <!-- 新增：注意事項公告區塊 -->
     <div class="mb-6 p-5 bg-[#F8F6F4] rounded-2xl border-l-4 border-[#B08889] shadow-sm text-sm text-[#4A4543] space-y-2">
       <div class="flex items-center gap-2 font-bold text-[#B08889]">
         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -183,7 +178,7 @@
             </div>
             <div class="flex justify-between items-start gap-2">
               <h4 class="font-bold ${isOutOfStock ? 'text-gray-400' : 'text-[#4A4543]'} text-sm">${item.name}</h4>
-              <span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec || '單一規格'}</span>
+              ${item.spec && item.spec.trim() !== '' ? `<span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec}</span>` : ''}
             </div>
             <p class="text-sm font-semibold ${isOutOfStock ? 'text-gray-400 line-through' : 'text-[#B08889]'} mt-1.5">NT$ ${item.price}</p>
           </div>
@@ -230,7 +225,8 @@
         const qty = currentCart[id];
         total += item.price * qty;
         count += qty;
-        cartList.innerHTML += `<div class="py-2.5 flex justify-between text-sm"><div><p class="font-medium text-[#4A4543]">${item.name}</p><p class="text-xs text-[#A39E9A]">${item.spec || ''} x ${qty}</p></div><span class="font-bold text-[#4A4543]">NT$ ${item.price * qty}</span></div>`;
+        const specText = item.spec && item.spec.trim() !== '' ? `${item.spec} ` : '';
+        cartList.innerHTML += `<div class="py-2.5 flex justify-between text-sm"><div><p class="font-medium text-[#4A4543]">${item.name}</p><p class="text-xs text-[#A39E9A]">${specText}x ${qty}</p></div><span class="font-bold text-[#4A4543]">NT$ ${item.price * qty}</span></div>`;
       });
 
       totalEl.innerText = `NT$ ${total}`;
