@@ -199,29 +199,41 @@
     }
 
     function renderProcurement() {
-      const tbody = document.getElementById("procurement-tbody");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-      const map = {};
-      orders.forEach(o => (o.items || []).forEach(i => {
-        const key = `${i.name}_${i.spec || '預設'}`;
-        if (!map[key]) map[key] = { ...i, totalQty: 0 };
-        map[key].totalQty += i.qty;
-      }));
-
-      Object.keys(map).forEach(k => {
-        const item = map[k], checked = checkedStatus[k] || false;
-        tbody.innerHTML += `
-          <tr class="${checked ? 'bg-[#8F9E93]/10 line-through text-[#A39E9A]' : 'hover:bg-[#FAF9F7]'} transition-colors">
-            <td class="p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC] focus:ring-[#8F9E93]"></td>
-            <td class="p-3 font-bold text-[#4A4543]">${item.name}</td>
-            <td class="p-3 text-[#7A726E]">${item.spec || '-'}</td>
-            <td class="p-3 text-right font-black text-[#B08889] text-base">${item.totalQty}</td>
-            <td class="p-3 text-right text-[#7A726E]">NT$ ${item.price}</td>
-            <td class="p-3 text-right font-bold text-[#4A4543]">NT$ ${item.price * item.totalQty}</td>
-          </tr>`;
-      });
+  const tbody = document.getElementById("procurement-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  const map = {};
+  
+  orders.forEach(o => (o.items || []).forEach(i => {
+    // 自動去除商品名稱中的引號與前後空白，確保統計精準合併
+    const cleanName = (i.name || '').replace(/["']/g, '').trim();
+    const cleanSpec = (i.spec || '預設').trim();
+    const key = `${cleanName}_${cleanSpec}`;
+    
+    if (!map[key]) {
+      map[key] = { 
+        name: cleanName, 
+        spec: cleanSpec, 
+        price: i.price, 
+        totalQty: 0 
+      };
     }
+    map[key].totalQty += i.qty;
+  }));
+
+  Object.keys(map).forEach(k => {
+    const item = map[k], checked = checkedStatus[k] || false;
+    tbody.innerHTML += `
+      <tr class="${checked ? 'bg-[#8F9E93]/10 line-through text-[#A39E9A]' : 'hover:bg-[#FAF9F7]'} transition-colors">
+        <td class="p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC] focus:ring-[#8F9E93]"></td>
+        <td class="p-3 font-bold text-[#4A4543]">${item.name}</td>
+        <td class="p-3 text-[#7A726E]">${item.spec || '-'}</td>
+        <td class="p-3 text-right font-black text-[#B08889] text-base">${item.totalQty}</td>
+        <td class="p-3 text-right text-[#7A726E]">NT$ ${item.price}</td>
+        <td class="p-3 text-right font-bold text-[#4A4543]">NT$ ${item.price * item.totalQty}</td>
+      </tr>`;
+  });
+}
 
     function renderQueue() {
       const tbody = document.getElementById("queue-tbody");
