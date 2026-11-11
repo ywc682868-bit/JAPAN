@@ -99,7 +99,7 @@
         <div class="bg-[#F8F6F4] rounded-3xl shadow-sm border border-[#D5D0CC] p-4 sm:p-5 sticky top-20 space-y-4">
           <h3 class="text-base sm:text-lg font-bold text-[#4A4543] border-b border-[#EFECE9] pb-3 flex justify-between items-center">
             <span class="flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-[#B08889]"></i>您的喊單清單</span>
-            <span id="cart-item-count" class="text-xs text-[#6B4B4C] px-2.5 py-1 rounded-full font-bold" style="background-color: rgba(176, 136, 137, 0.2);">0 件</span>
+            <span id="cart-item-count" class="text-xs text-[#6B4B4C] px-2.5 py-1 rounded-full font-bold" style="background-color: rgba(176, 136, 137, 0.2);">NT$ 0</span>
           </h3>
           <div id="cart-items-list" class="space-y-2 max-h-60 overflow-y-auto divide-y divide-[#EFECE9] text-sm">
             <p class="text-[#A39E9A] text-center py-6 text-xs">尚未選擇商品</p>
@@ -131,11 +131,11 @@
     </div>
   </main>
 
-  <!-- 手機版右下角浮動送單按鈕 -->
+  <!-- 手機版右下角浮動送單按鈕 (改為「喊單」並顯示總金額) -->
   <a href="#order-section" id="mobile-floating-btn" class="lg:hidden fixed bottom-5 right-4 z-50 bg-[#B08889] text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all active:scale-95 border-2 border-white">
     <i class="fa-solid fa-cart-shopping text-base"></i>
     <span class="font-bold text-xs">喊單</span>
-    <span id="floating-cart-count" class="bg-white text-[#B08889] text-[10px] font-black px-1.5 py-0.5 rounded-full">0</span>
+    <span id="floating-cart-count" class="bg-white text-[#B08889] text-[10px] font-black px-2 py-0.5 rounded-full">NT$ 0</span>
   </a>
 
   <script type="module">
@@ -187,13 +187,13 @@
       select.style.color = "#FFFFFF";
 
       if (val === "Threads") {
-        select.style.backgroundColor = "#3A3837"; // 莫蘭迪深黑
+        select.style.backgroundColor = "#3A3837";
       } else if (val === "IG") {
-        select.style.backgroundColor = "#B08889"; // 莫蘭迪乾燥玫瑰紅
+        select.style.backgroundColor = "#B08889";
       } else if (val === "FB") {
-        select.style.backgroundColor = "#6C7D8E"; // 莫蘭迪灰藍
+        select.style.backgroundColor = "#6C7D8E";
       } else {
-        select.style.backgroundColor = "#8F9E93"; // 莫蘭迪鼠尾草綠 (LINE)
+        select.style.backgroundColor = "#8F9E93";
       }
     };
 
@@ -255,7 +255,7 @@
       const submitBtn = document.getElementById("btn-submit-order");
       const floatingCountEl = document.getElementById("floating-cart-count");
       cartList.innerHTML = "";
-      let total = 0, count = 0;
+      let total = 0;
 
       const keys = Object.keys(currentCart);
       if (keys.length === 0) {
@@ -263,8 +263,8 @@
         totalEl.innerText = "NT$ 0";
         submitBtn.disabled = true;
         submitBtn.classList.add("opacity-40");
-        document.getElementById("cart-item-count").innerText = `0 件`;
-        if (floatingCountEl) floatingCountEl.innerText = "0";
+        document.getElementById("cart-item-count").innerText = `NT$ 0`;
+        if (floatingCountEl) floatingCountEl.innerText = "NT$ 0";
         return;
       }
 
@@ -272,14 +272,14 @@
         const item = catalogProducts[id];
         const qty = currentCart[id];
         total += item.price * qty;
-        count += qty;
         const specText = item.spec && item.spec.trim() !== '' ? `${item.spec} ` : '';
         cartList.innerHTML += `<div class="py-2.5 flex justify-between text-sm"><div><p class="font-medium text-[#4A4543]">${item.name}</p><p class="text-xs text-[#A39E9A]">${specText}x ${qty}</p></div><span class="font-bold text-[#4A4543]">NT$ ${item.price * qty}</span></div>`;
       });
 
-      totalEl.innerText = `NT$ ${total}`;
-      document.getElementById("cart-item-count").innerText = `${count} 件`;
-      if (floatingCountEl) floatingCountEl.innerText = `${count}`;
+      const formattedTotal = `NT$ ${total.toLocaleString()}`;
+      totalEl.innerText = formattedTotal;
+      document.getElementById("cart-item-count").innerText = formattedTotal;
+      if (floatingCountEl) floatingCountEl.innerText = formattedTotal;
 
       submitBtn.disabled = false;
       submitBtn.classList.remove("opacity-40");
