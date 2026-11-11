@@ -43,6 +43,7 @@
 </head>
 <body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-12">
 
+  <!-- 登入遮罩 -->
   <div id="auth-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center p-4">
     <div class="bg-[#F8F6F4] p-8 rounded-3xl shadow-xl max-w-sm w-full space-y-5 text-center border border-[#D5D0CC]">
       <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto text-[#B08889]" style="background-color: rgba(176, 136, 137, 0.2);">
@@ -78,12 +79,14 @@
       <button onclick="handleLogout()" class="px-4 py-2 bg-[#E2DEDA] text-[#4A4543] text-xs font-bold rounded-xl transition-all">安全登出</button>
     </header>
 
+    <!-- 標籤導覽 -->
     <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-hidden shadow-sm p-1 gap-1">
       <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 py-2.5 font-bold text-sm bg-[#B08889] text-white rounded-xl transition-all">採購統計</button>
       <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">排隊清單</button>
       <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">商品管理</button>
     </div>
 
+    <!-- 1. 採購總統計表 (自訂當地價格、小計當地幣別、底部換算台幣) -->
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-3 border-b border-[#EFECE9] pb-3">
         <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
@@ -106,29 +109,30 @@
               <th class="p-3">商品名稱</th>
               <th class="p-3">規格</th>
               <th class="p-3 text-right">總數量</th>
-              <th class="p-3 text-right">單價 (NT$)</th>
-              <th class="p-3 text-right rounded-r-xl">小計 (NT$)</th>
+              <th class="p-3 text-right">單價 (<span class="header-curr-label">JP¥</span>)</th>
+              <th class="p-3 text-right rounded-r-xl">小計 (<span class="header-curr-label">JP¥</span>)</th>
             </tr>
           </thead>
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl">採購總計金額 (NT$)：</td>
-              <td id="procurement-grand-total" class="p-3 text-right text-[#B08889] text-base font-black">NT$ 0</td>
+              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
+              <td id="procurement-local-total" class="p-3 text-right text-[#B08889] text-base font-black">JP¥ 0</td>
             </tr>
             <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
-              <td colspan="5" class="p-3 text-right rounded-l-xl">當地貨幣估算總額 (<span id="local-curr-label">JP¥</span>)：</td>
-              <td id="procurement-local-total" class="p-3 text-right text-[#8F9E93] text-sm font-black">JP¥ 0</td>
+              <td colspan="5" class="p-3 text-right rounded-l-xl">當地貨幣估算台幣總額 (NT$)：</td>
+              <td id="procurement-twd-total" class="p-3 text-right text-[#8F9E93] text-sm font-black">NT$ 0</td>
             </tr>
           </tfoot>
         </table>
       </div>
     </div>
 
+    <!-- 2. 排隊出貨清單 (可拖曳排序 + 總計金額保證一列顯示) -->
     <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-2">
         <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
-          <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>客戶訂單排隊清單（按住圖示可拖曳自訂順序）
+          <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單時間排序之客戶訂單（可拖曳順序）
         </h3>
         <button onclick="exportToExcel()" class="px-4 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2">
           <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
@@ -143,15 +147,15 @@
               <th class="p-3">平台</th>
               <th class="p-3">買家</th>
               <th class="p-3">明細</th>
-              <th class="p-3 text-right">金額</th>
+              <th class="p-3 text-right whitespace-nowrap">金額</th>
               <th class="p-3 text-center rounded-r-xl">刪除</th>
             </tr>
           </thead>
           <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl">所有訂單總計金額：</td>
-              <td id="queue-grand-total" class="p-3 text-right text-[#B08889] text-base font-black">NT$ 0</td>
+              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單總計金額：</td>
+              <td id="queue-grand-total" class="p-3 text-right text-[#B08889] text-base font-black whitespace-nowrap">NT$ 0</td>
               <td class="p-3 rounded-r-xl"></td>
             </tr>
           </tfoot>
@@ -159,6 +163,7 @@
       </div>
     </div>
 
+    <!-- 3. 商品定價與縮圖管理 -->
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-6">
       <div class="border border-[#D5D0CC] p-5 rounded-2xl bg-[#FAF9F7] space-y-4">
         <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
@@ -166,7 +171,7 @@
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="text" id="p-spec" placeholder="規格/顏色 (可留空)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-          <input type="number" id="p-price" required placeholder="單價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="number" id="p-price" required placeholder="預設售價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <select id="p-status" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
             <option value="available">可下單喊單</option>
             <option value="out_of_stock">無庫存/停止喊單</option>
@@ -205,7 +210,7 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    let catalog = {}, orders = [], checkedStatus = {};
+    let catalog = {}, orders = [], checkedStatus = {}, localPrices = {};
     let draggedItemId = null;
     let draggedOrderId = null;
 
@@ -237,6 +242,7 @@
         renderAll();
       });
       onValue(ref(db, "procurement_status"), s => { checkedStatus = s.val() || {}; renderProcurement(); });
+      onValue(ref(db, "procurement_local_prices"), s => { localPrices = s.val() || {}; renderProcurement(); });
     }
 
     window.switchTab = function(tab) {
@@ -256,16 +262,16 @@
 
     window.renderProcurement = function() {
       const tbody = document.getElementById("procurement-tbody");
-      const grandTotalEl = document.getElementById("procurement-grand-total");
       const localTotalEl = document.getElementById("procurement-local-total");
-      const localLabelEl = document.getElementById("local-curr-label");
+      const twdTotalEl = document.getElementById("procurement-twd-total");
       
       if (!tbody) return;
       tbody.innerHTML = "";
       
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
       const currencyRate = parseFloat(document.getElementById("currency-rate")?.value) || 0.21;
-      if (localLabelEl) localLabelEl.innerText = currencySymbol;
+      
+      document.querySelectorAll(".header-curr-label").forEach(el => el.innerText = currencySymbol);
 
       const map = {};
       orders.forEach(o => (o.items || []).forEach(i => {
@@ -279,12 +285,14 @@
         map[key].totalQty += i.qty;
       }));
 
-      let grandTotalNT = 0;
+      let grandLocalTotal = 0;
 
       Object.keys(map).forEach(k => {
         const item = map[k], checked = checkedStatus[k] || false;
-        const subtotal = item.price * item.totalQty;
-        grandTotalNT += subtotal;
+        const currentLocalPrice = localPrices[k] !== undefined ? localPrices[k] : "";
+        const numericPrice = parseFloat(currentLocalPrice) || 0;
+        const subtotalLocal = numericPrice * item.totalQty;
+        grandLocalTotal += subtotalLocal;
 
         tbody.innerHTML += `
           <tr class="${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors">
@@ -292,16 +300,22 @@
             <td class="p-3 font-bold text-[#4A4543]">${item.name}</td>
             <td class="p-3 text-[#7A726E]">${item.spec || '-'}</td>
             <td class="p-3 text-right font-black text-[#B08889] text-base">${item.totalQty}</td>
-            <td class="p-3 text-right text-[#7A726E]">NT$ ${item.price}</td>
-            <td class="p-3 text-right font-bold text-[#4A4543]">NT$ ${subtotal}</td>
+            <td class="p-3 text-right">
+              <input type="number" placeholder="輸入單價" value="${currentLocalPrice}" onchange="updateLocalPrice('${k}', this.value)" class="w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
+            </td>
+            <td class="p-3 text-right font-bold text-[#4A4543] whitespace-nowrap">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
           </tr>`;
       });
 
-      if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandTotalNT.toLocaleString()}`;
-      if (localTotalEl) {
-        const localVal = currencyRate > 0 ? Math.round(grandTotalNT / currencyRate) : 0;
-        localTotalEl.innerText = `${currencySymbol} ${localVal.toLocaleString()}`;
+      if (localTotalEl) localTotalEl.innerText = `${currencySymbol} ${grandLocalTotal.toLocaleString()}`;
+      if (twdTotalEl) {
+        const twdVal = Math.round(grandLocalTotal * currencyRate);
+        twdTotalEl.innerText = `NT$ ${twdVal.toLocaleString()}`;
       }
+    };
+
+    window.updateLocalPrice = function(key, val) {
+      set(ref(db, `procurement_local_prices/${key}`), val === "" ? null : parseFloat(val));
     };
 
     function renderQueue() {
