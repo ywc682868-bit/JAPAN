@@ -60,6 +60,22 @@
   </header>
 
   <main class="max-w-6xl mx-auto px-4 mt-6">
+    <!-- 新增：注意事項公告區塊 -->
+    <div class="mb-6 p-5 bg-[#F8F6F4] rounded-2xl border-l-4 border-[#B08889] shadow-sm text-sm text-[#4A4543] space-y-2">
+      <div class="flex items-center gap-2 font-bold text-[#B08889]">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>喊單須知與購物說明</span>
+      </div>
+      <p class="font-bold text-red-600">請注意！喊單不代表購買成功</p>
+      <p>有買到後闆娘會通知您</p>
+      <p>若此次連線您沒有其他有興趣的，請聯繫闆娘或小幫手結單</p>
+      <div class="pt-2 border-t border-[#EFECE9] space-y-1 text-xs text-[#7A726E]">
+        <p><span class="font-semibold text-[#4A4543]">結單方式：</span>賣貨便、7-11、郵局</p>
+        <p><span class="font-semibold text-[#4A4543]">運費及包材：</span>100-200，依商品多寡決定</p>
+        <p class="pt-1 text-[#4A4543]">小本經營，也都需要花時間找包材寄出商品，<span class="font-bold text-red-600">若無法接受請勿購買！</span></p>
+      </div>
+    </div>
+
     <div id="connection-status" class="mb-6 p-3.5 rounded-2xl text-xs font-medium border flex items-center" style="background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);">
       <i class="fa-solid fa-spinner fa-spin mr-2"></i> 連線資料庫中...
     </div>
@@ -75,7 +91,7 @@
       <div class="lg:col-span-1">
         <div class="bg-[#F8F6F4] rounded-3xl shadow-sm border border-[#D5D0CC] p-5 sticky top-24 space-y-4">
           <h3 class="text-lg font-bold text-[#4A4543] border-b border-[#EFECE9] pb-3 flex justify-between items-center">
-            <span class="flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-[#B08889]"></i>您的選購清單</span>
+            <span class="flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-[#B08889]"></i>您的喊單清單</span>
             <span id="cart-item-count" class="text-xs text-[#6B4B4C] px-2.5 py-1 rounded-full font-bold" style="background-color: rgba(176, 136, 137, 0.2);">0 件</span>
           </h3>
           <div id="cart-items-list" class="space-y-2 max-h-60 overflow-y-auto divide-y divide-[#EFECE9] text-sm">
