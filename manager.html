@@ -354,21 +354,21 @@
       set(ref(db, `procurement_local_prices/${key}`), val === "" ? null : numericVal);
     };
 
-    // 取得平台莫蘭迪專屬配色標籤
-    function getPlatformBadge(platform) {
-      const p = (platform || '').trim();
-      let bgClass = "bg-[#8F9E93]"; // 預設莫蘭迪鼠尾草綠 (LINE)
+    // 取得平台莫蘭迪專屬配色標籤（修正 Threads 白底白字問題）
+function getPlatformBadge(platform) {
+  const p = (platform || '').trim();
+  let bgClass = "bg-[#8F9E93]"; // 預設莫蘭迪鼠尾草綠 (LINE)
 
-      if (p === "Threads") {
-        bgClass = "bg-[#3A3837]"; // 莫蘭迪深黑
-      } else if (p === "IG" || p === "Instagram") {
-        bgClass = "bg-[#B08889]"; // 莫蘭迪乾燥玫瑰紅
-      } else if (p === "FB" || p === "Facebook") {
-        bgClass = "bg-[#6C7D8E]"; // 莫蘭迪灰藍
-      }
+  if (p.toLowerCase() === "threads") {
+    bgClass = "bg-[#3A3837]"; // 莫蘭迪深黑
+  } else if (p.toUpperCase() === "IG" || p.toLowerCase().includes("instagram")) {
+    bgClass = "bg-[#B08889]"; // 莫蘭迪乾燥玫瑰紅
+  } else if (p.toUpperCase() === "FB" || p.toLowerCase().includes("facebook")) {
+    bgClass = "bg-[#6C7D8E]"; // 莫蘭迪灰藍
+  }
 
-      return `<span class="${bgClass} text-white px-2.5 py-1 rounded-lg text-xs font-semibold shadow-xs">${p}</span>`;
-    }
+  return `<span class="${bgClass} text-white px-2.5 py-1 rounded-lg text-xs font-semibold inline-block shadow-xs">${p || 'LINE'}</span>`;
+}
 
     function renderQueue() {
       const tbody = document.getElementById("queue-tbody");
