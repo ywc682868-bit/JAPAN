@@ -94,7 +94,7 @@
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-2.5 border-b border-[#EFECE9] pb-3">
         <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
-          <i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單
+          <i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單（按住圖示可拖曳排序）
         </h3>
         
         <div class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
@@ -113,7 +113,8 @@
         <table class="w-full text-left text-xs sm:text-sm min-w-[600px] sm:min-w-full">
           <thead>
             <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
-              <th class="p-2 sm:p-3 w-10 text-center rounded-l-xl">已購</th>
+              <th class="p-2 sm:p-3 w-8 text-center"></th>
+              <th class="p-2 sm:p-3 w-10 text-center">已購</th>
               <th class="p-2 sm:p-3">商品名稱</th>
               <th class="p-2 sm:p-3">規格</th>
               <th class="p-2 sm:p-3 text-right">總數量</th>
@@ -124,11 +125,11 @@
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
+              <td colspan="6" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
               <td id="procurement-local-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">JP¥ 0</td>
             </tr>
             <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
-              <td colspan="5" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
+              <td colspan="6" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
               <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-xs sm:text-sm font-black whitespace-nowrap">NT$ 0</td>
             </tr>
           </tfoot>
@@ -218,10 +219,11 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    let catalog = {}, orders = [], checkedStatus = {}, localPrices = {};
+    let catalog = {}, orders = [], checkedStatus = {}, localPrices = {}, customProcurementOrder = [];
     let draggedItemId = null;
     let draggedOrderId = null;
-    let activeInputKey = null; // 紀錄目前正在輸入焦點中的欄位 Key
+    let draggedProcurementKey = null;
+    let activeInputKey = null;
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -251,10 +253,8 @@
         renderAll();
       });
       onValue(ref(db, "procurement_status"), s => { checkedStatus = s.val() || {}; renderProcurement(); });
-      onValue(ref(db, "procurement_local_prices"), s => { 
-        localPrices = s.val() || {}; 
-        renderProcurement(); 
-      });
+      onValue(ref(db, "procurement_local_prices"), s => { localPrices = s.val() || {}; renderProcurement(); });
+      onValue(ref(db, "procurement_custom_order"), s => { customProcurementOrder = s.val() || []; renderProcurement(); });
     }
 
     window.switchTab = function(tab) {
@@ -280,7 +280,6 @@
       const tbody = document.getElementById("procurement-tbody");
       if (!tbody) return;
 
-      // 如果使用者正在某個單價欄位中輸入數字，跳過整個重繪保護游標焦點
       if (activeInputKey && document.getElementById(`input-price-${activeInputKey}`) === document.activeElement) {
         return;
       }
@@ -303,32 +302,83 @@
         map[key].totalQty += i.qty;
       }));
 
-      Object.keys(map).forEach(k => {
+      let sortedKeys = Object.keys(map);
+      if (customProcurementOrder && customProcurementOrder.length > 0) {
+        sortedKeys.sort((a, b) => {
+          let idxA = customProcurementOrder.indexOf(a);
+          let idxB = customProcurementOrder.indexOf(b);
+          if (idxA === -1) idxA = 9999;
+          if (idxB === -1) idxB = 9999;
+          return idxA - idxB;
+        });
+      }
+
+      sortedKeys.forEach(k => {
         const item = map[k], checked = checkedStatus[k] || false;
         const savedVal = localPrices[k];
         const currentLocalPrice = (savedVal !== undefined && savedVal !== null) ? savedVal : "";
         const numericPrice = parseFloat(currentLocalPrice) || 0;
         const subtotalLocal = numericPrice * item.totalQty;
 
-        tbody.innerHTML += `
-          <tr class="${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors">
-            <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
-            <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${item.name}</td>
-            <td class="p-2 sm:p-3 text-[#7A726E]">${item.spec || '-'}</td>
-            <td class="p-2 sm:p-3 text-right font-black text-[#B08889] text-sm sm:text-base" id="qty-${k}">${item.totalQty}</td>
-            <td class="p-2 sm:p-3 text-right">
-              <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" 
-                onfocus="activeInputKey='${k}'" 
-                onblur="onPriceBlur('${k}', this.value)" 
-                oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" 
-                class="w-20 sm:w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
-            </td>
-            <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
-          </tr>`;
+        const tr = document.createElement("tr");
+        tr.className = `${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors cursor-grab active:cursor-grabbing`;
+        tr.draggable = true;
+        tr.dataset.key = k;
+
+        tr.addEventListener("dragstart", (e) => {
+          draggedProcurementKey = k;
+          e.dataTransfer.effectAllowed = "move";
+          tr.classList.add("opacity-40");
+        });
+
+        tr.addEventListener("dragend", () => {
+          tr.classList.remove("opacity-40");
+          draggedProcurementKey = null;
+        });
+
+        tr.addEventListener("dragover", (e) => e.preventDefault());
+
+        tr.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (draggedProcurementKey && draggedProcurementKey !== k) {
+            reorderProcurement(draggedProcurementKey, k, sortedKeys);
+          }
+        });
+
+        tr.innerHTML = `
+          <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm" title="按住拖曳排序"></i></td>
+          <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
+          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${item.name}</td>
+          <td class="p-2 sm:p-3 text-[#7A726E]">${item.spec || '-'}</td>
+          <td class="p-2 sm:p-3 text-right font-black text-[#B08889] text-sm sm:text-base" id="qty-${k}">${item.totalQty}</td>
+          <td class="p-2 sm:p-3 text-right">
+            <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" 
+              onfocus="activeInputKey='${k}'" 
+              onblur="onPriceBlur('${k}', this.value)" 
+              oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" 
+              class="w-20 sm:w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
+          </td>
+          <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
       });
 
       calculateTotals(map);
     };
+
+    function reorderProcurement(draggedKey, targetKey, currentKeys) {
+      const keys = [...currentKeys];
+      const dragIdx = keys.indexOf(draggedKey);
+      const targetIdx = keys.indexOf(targetKey);
+
+      if (dragIdx < 0 || targetIdx < 0) return;
+
+      keys.splice(dragIdx, 1);
+      keys.splice(targetIdx, 0, draggedKey);
+
+      customProcurementOrder = keys;
+      set(ref(db, "procurement_custom_order"), keys);
+    }
 
     window.calculateTotals = function(map) {
       const localTotalEl = document.getElementById("procurement-local-total");
@@ -366,7 +416,6 @@
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
       const numericVal = (val === "" || val === null || val === undefined) ? null : parseFloat(val);
       
-      // 動態更新本地變數與畫面，但不破壞焦點
       localPrices[key] = numericVal;
       
       const subtotalEl = document.getElementById(`subtotal-${key}`);
@@ -377,14 +426,12 @@
       
       calculateTotals();
 
-      // 防抖寫入：停止輸入 800ms 後才寫入 Firebase
       if (priceSaveTimer[key]) clearTimeout(priceSaveTimer[key]);
       priceSaveTimer[key] = setTimeout(() => {
         set(ref(db, `procurement_local_prices/${key}`), numericVal);
       }, 800);
     };
 
-    // 離開輸入框時立即寫入 Firebase 並解除焦點保護
     window.onPriceBlur = function(key, val) {
       activeInputKey = null;
       const numericVal = (val === "" || val === null || val === undefined) ? null : parseFloat(val);
