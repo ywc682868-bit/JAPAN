@@ -28,6 +28,8 @@
     .text-\[\#A39E9A\] { color: #A39E9A !important; }
     .border-\[\#D5D0CC\] { border-color: #D5D0CC !important; }
     .border-\[\#EFECE9\] { border-color: #EFECE9 !important; }
+
+    html { scroll-behavior: smooth; }
   </style>
 
   <script type="importmap">
@@ -39,53 +41,61 @@
     }
   </script>
 </head>
-<body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-12">
+<body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-24 sm:pb-12">
 
-  <header class="bg-[#F8F6F4] border-b border-[#D5D0CC] shadow-sm sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-[#B08889]" style="background-color: rgba(176, 136, 137, 0.2);">
-          <i class="fa-solid fa-cookie-bite text-lg"></i>
+  <!-- 頁首導覽：店名中英文換行 -->
+  <header class="bg-[#F8F6F4] border-b border-[#D5D0CC] shadow-sm sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-[#B08889]" style="background-color: rgba(176, 136, 137, 0.2);">
+          <i class="fa-solid fa-cookie-bite text-base sm:text-lg"></i>
         </div>
-        <h1 class="text-2xl font-bold tracking-wide text-[#4A4543]">奶油雜貨店 Butter Variety Store</h1>
+        <div>
+          <h1 class="text-lg sm:text-2xl font-bold tracking-wide text-[#4A4543] leading-tight">奶油雜貨店</h1>
+          <p class="text-xs text-[#7A726E] font-medium tracking-normal">Butter Variety Store</p>
+        </div>
       </div>
-      <a href="manager.html" class="px-3.5 py-2 rounded-xl text-xs font-bold bg-[#E2DEDA] text-[#4A4543] transition-all flex items-center gap-1.5" title="管理登入">
-        <i class="fa-solid fa-lock text-[#7A726E]"></i> 管理後台
+      <a href="manager.html" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-[#E2DEDA] text-[#4A4543] transition-all flex items-center gap-1" title="管理登入">
+        <i class="fa-solid fa-lock text-[#7A726E]"></i> <span class="hidden sm:inline">管理</span>後台
       </a>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 mt-6">
-    <div class="mb-6 p-5 bg-[#F8F6F4] rounded-2xl border-l-4 border-[#B08889] shadow-sm text-sm text-[#4A4543] space-y-2">
-      <div class="flex items-center gap-2 font-bold text-[#B08889]">
+  <main class="max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6">
+    <!-- 喊單須知公告區塊 -->
+    <div class="mb-4 sm:mb-6 p-4 sm:p-5 bg-[#F8F6F4] rounded-2xl border-l-4 border-[#B08889] shadow-sm text-xs sm:text-sm text-[#4A4543] space-y-2">
+      <div class="flex items-center gap-2 font-bold text-[#B08889] text-sm sm:text-base">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span>喊單須知與購物說明</span>
       </div>
       <p class="font-bold text-red-600">請注意！喊單不代表購買成功</p>
       <p>有買到後闆娘會通知您</p>
-      <p>若此次連線您沒有其他有興趣的，請聯繫闆娘或小幫手結單</p>
+      <p>若此次連線您沒有其他有興趣的，<br class="sm:hidden">請聯繫闆娘或小幫手結單</p>
+      
       <div class="pt-2 border-t border-[#EFECE9] space-y-1 text-xs text-[#7A726E]">
         <p><span class="font-semibold text-[#4A4543]">結單方式：</span>賣貨便、7-11、郵局</p>
         <p><span class="font-semibold text-[#4A4543]">運費及包材：</span>100-200，依商品多寡決定</p>
-        <p class="pt-1 text-[#4A4543]">小本經營，也都需要花時間找包材寄出商品，<span class="font-bold text-red-600">若無法接受請勿購買！</span></p>
+        <p class="pt-1 text-[#4A4543]">小本經營，也都需要花時間找包材寄出商品，<br class="sm:hidden"><span class="font-bold text-red-600">若無法接受請勿購買！</span></p>
       </div>
     </div>
 
-    <div id="connection-status" class="mb-6 p-3.5 rounded-2xl text-xs font-medium border flex items-center" style="background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);">
+    <div id="connection-status" class="mb-4 sm:mb-6 p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center" style="background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);">
       <i class="fa-solid fa-spinner fa-spin mr-2"></i> 連線資料庫中...
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 space-y-4">
-        <h2 class="text-xl font-bold text-[#4A4543] flex items-center gap-2">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
+      <!-- 商品列表 -->
+      <div class="lg:col-span-2 space-y-3 sm:space-y-4">
+        <h2 class="text-lg sm:text-xl font-bold text-[#4A4543] flex items-center gap-2">
           <i class="fa-solid fa-gift text-[#B08889]"></i> 商品目錄
         </h2>
-        <div id="customer-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        <div id="customer-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"></div>
       </div>
 
-      <div class="lg:col-span-1">
-        <div class="bg-[#F8F6F4] rounded-3xl shadow-sm border border-[#D5D0CC] p-5 sticky top-24 space-y-4">
-          <h3 class="text-lg font-bold text-[#4A4543] border-b border-[#EFECE9] pb-3 flex justify-between items-center">
+      <!-- 送單填寫區塊 -->
+      <div class="lg:col-span-1" id="order-section">
+        <div class="bg-[#F8F6F4] rounded-3xl shadow-sm border border-[#D5D0CC] p-4 sm:p-5 sticky top-20 space-y-4">
+          <h3 class="text-base sm:text-lg font-bold text-[#4A4543] border-b border-[#EFECE9] pb-3 flex justify-between items-center">
             <span class="flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-[#B08889]"></i>您的喊單清單</span>
             <span id="cart-item-count" class="text-xs text-[#6B4B4C] px-2.5 py-1 rounded-full font-bold" style="background-color: rgba(176, 136, 137, 0.2);">0 件</span>
           </h3>
@@ -95,11 +105,11 @@
           <form onsubmit="submitCustomerOrder(event)" class="space-y-3.5 pt-3 border-t border-[#EFECE9]">
             <div>
               <label class="block text-xs font-semibold text-[#7A726E] mb-1">喊單平台</label>
-              <select id="cust-platform" class="w-full text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none">
+              <select id="cust-platform" onchange="updatePlatformStyle()" class="w-full text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none font-bold transition-all">
                 <option value="LINE">LINE</option>
                 <option value="Threads">Threads</option>
-                <option value="IG">Instagram</option>
-                <option value="FB">Facebook</option>
+                <option value="IG">Instagram (IG)</option>
+                <option value="FB">Facebook (FB)</option>
               </select>
             </div>
             <div>
@@ -108,7 +118,7 @@
             </div>
             <div class="bg-[#EFECE9] p-3.5 rounded-2xl flex justify-between items-center font-bold text-[#4A4543]">
               <span class="text-xs text-[#7A726E]">總金額：</span>
-              <span id="cart-total-price" class="text-xl text-[#B08889]">NT$ 0</span>
+              <span id="cart-total-price" class="text-lg sm:text-xl text-[#B08889]">NT$ 0</span>
             </div>
             <button type="submit" id="btn-submit-order" disabled class="w-full py-3 bg-[#B08889] text-white font-bold rounded-xl shadow-sm transition-all text-sm opacity-40">
               確認送出訂單
@@ -118,6 +128,13 @@
       </div>
     </div>
   </main>
+
+  <!-- 手機版右下角浮動送單按鈕 -->
+  <a href="#order-section" id="mobile-floating-btn" class="lg:hidden fixed bottom-5 right-4 z-50 bg-[#B08889] text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all active:scale-95 border-2 border-white">
+    <i class="fa-solid fa-cart-shopping text-base"></i>
+    <span class="font-bold text-xs">快速喊單</span>
+    <span id="floating-cart-count" class="bg-white text-[#B08889] text-[10px] font-black px-1.5 py-0.5 rounded-full">0</span>
+  </a>
 
   <script type="module">
     import { initializeApp } from "firebase/app";
@@ -148,11 +165,31 @@
 
       renderCatalog();
       renderCart();
+      updatePlatformStyle();
+
       const statusEl = document.getElementById("connection-status");
-      statusEl.className = "mb-6 p-3.5 rounded-2xl text-xs font-medium border flex items-center";
+      statusEl.className = "mb-4 sm:mb-6 p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center";
       statusEl.style.cssText = "background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);";
       statusEl.innerHTML = `<i class="fa-solid fa-wifi mr-2"></i> 已連線至資料庫`;
     });
+
+    window.updatePlatformStyle = function() {
+      const select = document.getElementById("cust-platform");
+      if (!select) return;
+      const p = select.value;
+
+      select.classList.remove("bg-[#8F9E93]", "bg-[#3A3837]", "bg-[#B08889]", "bg-[#6C7D8E]", "text-white", "bg-white", "text-[#4A4543]");
+
+      if (p === "Threads") {
+        select.classList.add("bg-[#3A3837]", "text-white");
+      } else if (p === "IG" || p === "Instagram (IG)") {
+        select.classList.add("bg-[#B08889]", "text-white");
+      } else if (p === "FB" || p === "Facebook (FB)") {
+        select.classList.add("bg-[#6C7D8E]", "text-white");
+      } else {
+        select.classList.add("bg-[#8F9E93]", "text-white");
+      }
+    };
 
     function renderCatalog() {
       const grid = document.getElementById("customer-product-grid");
@@ -168,8 +205,10 @@
         const isOutOfStock = item.isOutOfStock || false;
 
         const card = document.createElement("div");
-        card.className = `bg-[#F8F6F4] p-4 rounded-2xl border border-[#D5D0CC] shadow-sm flex flex-col justify-between transition-all ${isOutOfStock ? 'opacity-60 bg-gray-100 border-gray-300' : ''}`;
+        card.className = `bg-[#F8F6F4] p-3.5 sm:p-4 rounded-2xl border border-[#D5D0CC] shadow-sm flex flex-col justify-between transition-all ${isOutOfStock ? 'opacity-60 bg-gray-100 border-gray-300' : ''}`;
         
+        const specTag = item.spec && item.spec.trim() !== '' ? `<span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec}</span>` : '';
+
         card.innerHTML = `
           <div>
             <div class="relative w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1">
@@ -177,17 +216,17 @@
               ${item.image ? `<img src="${item.image}" class="w-full h-full object-contain rounded-lg ${isOutOfStock ? 'filter grayscale' : ''}" onerror="this.parentElement.style.display='none'">` : `<div class="w-full h-full flex items-center justify-center text-xs text-[#A39E9A] ${isOutOfStock ? 'filter grayscale' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
             </div>
             <div class="flex justify-between items-start gap-2">
-              <h4 class="font-bold ${isOutOfStock ? 'text-gray-400' : 'text-[#4A4543]'} text-sm">${item.name}</h4>
-              ${item.spec && item.spec.trim() !== '' ? `<span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec}</span>` : ''}
+              <h4 class="font-bold ${isOutOfStock ? 'text-gray-400' : 'text-[#4A4543]'} text-sm sm:text-base">${item.name}</h4>
+              ${specTag}
             </div>
-            <p class="text-sm font-semibold ${isOutOfStock ? 'text-gray-400 line-through' : 'text-[#B08889]'} mt-1.5">NT$ ${item.price}</p>
+            <p class="text-sm sm:text-base font-bold ${isOutOfStock ? 'text-gray-400 line-through' : 'text-[#B08889]'} mt-1.5">NT$ ${item.price}</p>
           </div>
-          <div class="flex items-center justify-between mt-4 pt-3 border-t border-[#EFECE9]">
+          <div class="flex items-center justify-between mt-3 sm:mt-4 pt-3 border-t border-[#EFECE9]">
             <span class="text-xs text-[#A39E9A]">數量</span>
             <div class="flex items-center gap-2">
-              <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="updateCart('${id}', -1)" class="w-8 h-8 rounded-xl border border-[#D5D0CC] bg-white font-bold text-[#7A726E] hover:bg-[#EFECE9] disabled:opacity-30 disabled:cursor-not-allowed transition-all">-</button>
+              <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="updateCart('${id}', -1)" class="w-8 h-8 rounded-xl border border-[#D5D0CC] bg-white font-bold text-[#7A726E] hover:bg-[#EFECE9] disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm">-</button>
               <span class="w-6 text-center font-bold ${isOutOfStock ? 'text-gray-400' : 'text-[#4A4543]'} text-sm">${qty}</span>
-              <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="updateCart('${id}', 1)" class="w-8 h-8 rounded-xl bg-[#8F9E93] disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-white transition-all">+</button>
+              <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="updateCart('${id}', 1)" class="w-8 h-8 rounded-xl bg-[#8F9E93] disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-white transition-all text-sm">+</button>
             </div>
           </div>
         `;
@@ -208,6 +247,7 @@
       const cartList = document.getElementById("cart-items-list");
       const totalEl = document.getElementById("cart-total-price");
       const submitBtn = document.getElementById("btn-submit-order");
+      const floatingCountEl = document.getElementById("floating-cart-count");
       cartList.innerHTML = "";
       let total = 0, count = 0;
 
@@ -217,6 +257,8 @@
         totalEl.innerText = "NT$ 0";
         submitBtn.disabled = true;
         submitBtn.classList.add("opacity-40");
+        document.getElementById("cart-item-count").innerText = `0 件`;
+        if (floatingCountEl) floatingCountEl.innerText = "0";
         return;
       }
 
@@ -231,6 +273,8 @@
 
       totalEl.innerText = `NT$ ${total}`;
       document.getElementById("cart-item-count").innerText = `${count} 件`;
+      if (floatingCountEl) floatingCountEl.innerText = `${count}`;
+
       submitBtn.disabled = false;
       submitBtn.classList.remove("opacity-40");
     }
