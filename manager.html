@@ -106,14 +106,18 @@
 
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-6">
       <div class="border border-[#D5D0CC] p-5 rounded-2xl bg-[#FAF9F7] space-y-4">
-        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品（下方可直接拖曳卡片自訂排序）</h3>
-        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
+        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
+        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-center">
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
           <input type="text" id="p-spec" placeholder="規格/顏色" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
           <input type="number" id="p-price" required placeholder="單價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
+          <select id="p-status" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
+            <option value="available">可下單喊單</option>
+            <option value="out_of_stock">無庫存/停止喊單</option>
+          </select>
           <div>
-            <label class="block text-xs text-[#7A726E] mb-1">上傳圖片 </label>
+            <label class="block text-xs text-[#7A726E] mb-1">上傳圖片</label>
             <input type="file" id="p-image-file" accept="image/*" class="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#8F9E93]/20 file:text-[#4A4543] hover:file:bg-[#8F9E93]/30">
           </div>
           <div class="flex gap-2">
@@ -249,12 +253,12 @@
 
       sortedIds.forEach(id => {
         const item = catalog[id];
+        const isOutOfStock = item.isOutOfStock || false;
         const card = document.createElement("div");
-        card.className = "border border-[#D5D0CC] rounded-2xl p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing hover:shadow-md transition-all";
+        card.className = `border border-[#D5D0CC] rounded-2xl p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing hover:shadow-md transition-all ${isOutOfStock ? 'bg-slate-50' : ''}`;
         card.draggable = true;
         card.dataset.id = id;
 
-        // 拖曳事件監聽
         card.addEventListener("dragstart", (e) => {
           draggedItemId = id;
           e.dataTransfer.effectAllowed = "move";
@@ -279,11 +283,13 @@
           <div>
             <div class="flex justify-between items-center mb-2 text-[#A39E9A]">
               <i class="fa-solid fa-grip-vertical text-sm" title="按住拖曳排序"></i>
-              <span class="text-[10px] bg-[#EFECE9] px-2 py-0.5 rounded text-[#7A726E]">拖曳排序</span>
+              <button onclick="toggleStockStatus('${id}', ${!isOutOfStock})" class="text-xs px-2 py-0.5 rounded-full font-medium transition-all ${isOutOfStock ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}">
+                ${isOutOfStock ? '已停售/無庫存' : '正常供貨中'}
+              </button>
             </div>
-            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1"><img src="${item.image}" class="w-full h-full object-contain rounded-lg pointer-events-none" onerror="this.parentElement.style.display='none'"></div>` : '<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3 pointer-events-none"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>'}
-            <div class="font-bold text-sm text-[#4A4543]">${item.name} <span class="text-xs text-[#A39E9A]">(${item.spec || '無'})</span></div>
-            <div class="text-[#B08889] font-semibold text-sm mt-1">NT$ ${item.price}</div>
+            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1 ${isOutOfStock ? 'grayscale opacity-60' : ''}"><img src="${item.image}" class="w-full h-full object-contain rounded-lg pointer-events-none" onerror="this.parentElement.style.display='none'"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3 pointer-events-none ${isOutOfStock ? 'grayscale opacity-60' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
+            <div class="font-bold text-sm text-[#4A4543] ${isOutOfStock ? 'text-slate-400' : ''}">${item.name} <span class="text-xs text-[#A39E9A]">(${item.spec || '無'})</span></div>
+            <div class="text-[#B08889] font-semibold text-sm mt-1 ${isOutOfStock ? 'text-slate-400 line-through' : ''}">NT$ ${item.price}</div>
           </div>
           <div class="flex gap-2 pt-2 border-t border-[#EFECE9]">
             <button onclick="editProduct('${id}')" class="flex-1 py-1.5 bg-[#EFECE9] hover:bg-[#D5D0CC] text-[#4A4543] text-xs font-bold rounded-xl transition-all">修改</button>
@@ -294,7 +300,10 @@
       });
     }
 
-    // 拖曳結束後重新分配 order 數值並批量寫入 Firebase
+    window.toggleStockStatus = function(id, status) {
+      update(ref(db, `catalog/${id}`), { isOutOfStock: status });
+    };
+
     function reorderProducts(draggedId, targetId) {
       const sortedIds = Object.keys(catalog).sort((a, b) => (catalog[a].order ?? 9999) - (catalog[b].order ?? 9999));
       const dragIdx = sortedIds.indexOf(draggedId);
@@ -369,17 +378,18 @@
       const name = document.getElementById("p-name").value.trim();
       const spec = document.getElementById("p-spec").value.trim();
       const price = Number(document.getElementById("p-price").value);
+      const isOutOfStock = document.getElementById("p-status").value === "out_of_stock";
       const fileInput = document.getElementById("p-image-file");
 
       const saveData = (imageUrl) => {
-        const payload = { name, spec, price };
+        const payload = { name, spec, price, isOutOfStock };
         if (imageUrl !== undefined) payload.image = imageUrl;
 
         if (editId) {
           update(ref(db, `catalog/${editId}`), payload).then(() => resetForm());
         } else {
           payload.image = imageUrl || "";
-          payload.order = Object.keys(catalog).length; // 新商品預設排在最後
+          payload.order = Object.keys(catalog).length;
           set(push(ref(db, "catalog")), payload).then(() => resetForm());
         }
       };
@@ -400,6 +410,7 @@
       document.getElementById("p-name").value = item.name;
       document.getElementById("p-spec").value = item.spec || "";
       document.getElementById("p-price").value = item.price;
+      document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
       document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
       document.getElementById("submit-btn").innerText = "確認修改";
       document.getElementById("cancel-edit-btn").classList.remove("hidden");
@@ -411,8 +422,9 @@
       document.getElementById("p-name").value = "";
       document.getElementById("p-spec").value = "";
       document.getElementById("p-price").value = "";
+      document.getElementById("p-status").value = "available";
       document.getElementById("p-image-file").value = "";
-      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-gift text-[#B08889]"></i> 新增上架商品（下方可拖曳卡片自訂排序）`;
+      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-gift text-[#B08889]"></i> 新增上架商品`;
       document.getElementById("submit-btn").innerText = "確認上架";
       document.getElementById("cancel-edit-btn").classList.add("hidden");
     };
