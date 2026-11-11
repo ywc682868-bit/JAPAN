@@ -18,17 +18,17 @@
     .text-morandi-sub { color: #7A726E !important; }
     .border-morandi { border-color: #D5D0CC !important; }
     
-    .bg-[\#EFECE9] { background-color: #EFECE9 !important; }
-    .bg-[\#F8F6F4] { background-color: #F8F6F4 !important; }
-    .bg-[\#B08889] { background-color: #B08889 !important; }
-    .bg-[\#8F9E93] { background-color: #8F9E93 !important; }
-    .bg-[\#E2DEDA] { background-color: #E2DEDA !important; }
-    .text-[\#4A4543] { color: #4A4543 !important; }
-    .text-[\#B08889] { color: #B08889 !important; }
-    .text-[\#7A726E] { color: #7A726E !important; }
-    .text-[\#A39E9A] { color: #A39E9A !important; }
-    .border-[\#D5D0CC] { border-color: #D5D0CC !important; }
-    .border-[\#EFECE9] { border-color: #EFECE9 !important; }
+    .bg-\[\#EFECE9\] { background-color: #EFECE9 !important; }
+    .bg-\[\#F8F6F4\] { background-color: #F8F6F4 !important; }
+    .bg-\[\#B08889\] { background-color: #B08889 !important; }
+    .bg-\[\#8F9E93\] { background-color: #8F9E93 !important; }
+    .bg-\[\#E2DEDA\] { background-color: #E2DEDA !important; }
+    .text-\[\#4A4543\] { color: #4A4543 !important; }
+    .text-\[\#B08889\] { color: #B08889 !important; }
+    .text-\[\#7A726E\] { color: #7A726E !important; }
+    .text-\[\#A39E9A\] { color: #A39E9A !important; }
+    .border-\[\#D5D0CC\] { border-color: #D5D0CC !important; }
+    .border-\[\#EFECE9\] { border-color: #EFECE9 !important; }
 
     /* 手機模式滾動優化 */
     .scrollbar-none::-webkit-scrollbar { display: none; }
@@ -94,4 +94,546 @@
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-2.5 border-b border-[#EFECE9] pb-3">
         <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
-          <i class="
+          <i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單
+        </h3>
+        
+        <div class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
+          <div class="flex items-center gap-1">
+            <span class="text-[#7A726E] font-medium">貨幣：</span>
+            <input type="text" id="currency-symbol" value="JP¥" oninput="renderProcurement()" placeholder="JP¥" class="w-12 sm:w-14 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-[#7A726E] font-medium pl-1">匯率：</span>
+            <input type="number" id="currency-rate" value="0.21" step="0.001" oninput="renderProcurement()" placeholder="匯率" class="w-16 sm:w-16 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto -mx-3 sm:mx-0">
+        <table class="w-full text-left text-xs sm:text-sm min-w-[600px] sm:min-w-full">
+          <thead>
+            <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
+              <th class="p-2 sm:p-3 w-10 text-center rounded-l-xl">已購</th>
+              <th class="p-2 sm:p-3">商品名稱</th>
+              <th class="p-2 sm:p-3">規格</th>
+              <th class="p-2 sm:p-3 text-right">總數量</th>
+              <th class="p-2 sm:p-3 text-right">單價 (<span class="header-curr-label">JP¥</span>)</th>
+              <th class="p-2 sm:p-3 text-right rounded-r-xl">小計 (<span class="header-curr-label">JP¥</span>)</th>
+            </tr>
+          </thead>
+          <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
+          <tfoot>
+            <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
+              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
+              <td id="procurement-local-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">JP¥ 0</td>
+            </tr>
+            <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
+              <td colspan="5" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
+              <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-xs sm:text-sm font-black whitespace-nowrap">NT$ 0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. 排隊出貨清單 -->
+    <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
+      <div class="flex justify-between items-center flex-wrap gap-2">
+        <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單時間排序之客戶訂單
+        </h3>
+        <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
+        </button>
+      </div>
+      <div class="overflow-x-auto -mx-3 sm:mx-0">
+        <table class="w-full text-left text-xs sm:text-sm min-w-[650px] sm:min-w-full">
+          <thead>
+            <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
+              <th class="p-2 sm:p-3 w-8 text-center rounded-l-xl">排序</th>
+              <th class="p-2 sm:p-3">時間</th>
+              <th class="p-2 sm:p-3">平台</th>
+              <th class="p-2 sm:p-3">買家</th>
+              <th class="p-2 sm:p-3">明細</th>
+              <th class="p-2 sm:p-3 text-right whitespace-nowrap">金額</th>
+              <th class="p-2 sm:p-3 text-center rounded-r-xl">刪除</th>
+            </tr>
+          </thead>
+          <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
+          <tfoot>
+            <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
+              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單總計金額：</td>
+              <td id="queue-grand-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">NT$ 0</td>
+              <td class="p-2.5 sm:p-3 rounded-r-xl"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- 3. 商品定價與縮圖管理 -->
+    <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div class="border border-[#D5D0CC] p-4 sm:p-5 rounded-2xl bg-[#FAF9F7] space-y-3 sm:space-y-4">
+        <h3 id="form-title" class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
+        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-center">
+          <input type="hidden" id="edit-id">
+          <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="text" id="p-spec" placeholder="規格/顏色 (可留空)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="number" id="p-price" required placeholder="預設售價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <select id="p-status" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+            <option value="available">可下單喊單</option>
+            <option value="out_of_stock">無庫存/停止喊單</option>
+          </select>
+          <div>
+            <label class="block text-xs text-[#7A726E] mb-1">上傳圖片</label>
+            <input type="file" id="p-image-file" accept="image/*" class="text-xs w-full">
+          </div>
+          <div class="flex gap-2 pt-1 sm:pt-0">
+            <button type="submit" id="submit-btn" class="flex-1 py-2.5 bg-[#8F9E93] text-white font-bold rounded-xl text-sm shadow-sm">確認上架</button>
+            <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-2.5 bg-[#D5D0CC] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" id="admin-product-grid"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "firebase/app";
+    import { getDatabase, ref, set, push, onValue, remove, update } from "firebase/database";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD25JH9MgZtpDbOgox8vp4_bS16-3Y_fnk",
+      authDomain: "butter-grocery.firebaseapp.com",
+      databaseURL: "https://butter-grocery-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "butter-grocery",
+      storageBucket: "butter-grocery.firebasestorage.app",
+      messagingSenderId: "498008003432",
+      appId: "1:498008003432:web:4ecd08d11538d03f1b3cdd"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    let catalog = {}, orders = [], checkedStatus = {}, localPrices = {};
+    let draggedItemId = null;
+    let draggedOrderId = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById("auth-overlay").classList.add("hidden");
+        document.getElementById("admin-content").classList.remove("hidden");
+        initListeners();
+      } else {
+        document.getElementById("auth-overlay").classList.remove("hidden");
+        document.getElementById("admin-content").classList.add("hidden");
+      }
+    });
+
+    window.handleLogin = function(e) {
+      e.preventDefault();
+      signInWithEmailAndPassword(auth, document.getElementById("admin-email").value, document.getElementById("admin-password").value)
+        .catch(err => { document.getElementById("login-error").innerText = "登入失敗：" + err.message; });
+    };
+
+    window.handleLogout = () => signOut(auth);
+
+    function initListeners() {
+      onValue(ref(db, "catalog"), s => { catalog = s.val() || {}; renderAll(); });
+      onValue(ref(db, "orders"), s => {
+        const data = s.val() || {};
+        orders = Object.keys(data).map(id => ({ id, ...data[id] }));
+        orders.sort((a, b) => (a.orderIndex ?? a.timestamp) - (b.orderIndex ?? b.timestamp));
+        renderAll();
+      });
+      onValue(ref(db, "procurement_status"), s => { checkedStatus = s.val() || {}; renderProcurement(); });
+      onValue(ref(db, "procurement_local_prices"), s => { localPrices = s.val() || {}; renderProcurement(); });
+    }
+
+    window.switchTab = function(tab) {
+      ['procurement', 'queue', 'products'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${t}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap";
+      });
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-btn-${tab}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl shadow-sm transition-all whitespace-nowrap";
+    };
+
+    function renderAll() {
+      renderProcurement();
+      renderQueue();
+      renderProducts();
+    }
+
+    function sanitizeKey(str) {
+      return (str || '').replace(/[.#$/\[\]]/g, "_");
+    }
+
+    window.renderProcurement = function() {
+      const tbody = document.getElementById("procurement-tbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      
+      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
+      document.querySelectorAll(".header-curr-label").forEach(el => el.innerText = currencySymbol);
+
+      const map = {};
+      orders.forEach(o => (o.items || []).forEach(i => {
+        const cleanName = (i.name || '').replace(/["']/g, '').trim();
+        const cleanSpec = (i.spec || '').trim();
+        const rawKey = `${cleanName}_${cleanSpec || '預設'}`;
+        const key = sanitizeKey(rawKey);
+        
+        if (!map[key]) {
+          map[key] = { name: cleanName, spec: cleanSpec, price: i.price, totalQty: 0 };
+        }
+        map[key].totalQty += i.qty;
+      }));
+
+      Object.keys(map).forEach(k => {
+        const item = map[k], checked = checkedStatus[k] || false;
+        const currentLocalPrice = localPrices[k] !== undefined ? localPrices[k] : "";
+        const numericPrice = parseFloat(currentLocalPrice) || 0;
+        const subtotalLocal = numericPrice * item.totalQty;
+
+        tbody.innerHTML += `
+          <tr class="${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors">
+            <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
+            <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${item.name}</td>
+            <td class="p-2 sm:p-3 text-[#7A726E]">${item.spec || '-'}</td>
+            <td class="p-2 sm:p-3 text-right font-black text-[#B08889] text-sm sm:text-base" id="qty-${k}">${item.totalQty}</td>
+            <td class="p-2 sm:p-3 text-right">
+              <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" class="w-20 sm:w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
+            </td>
+            <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
+          </tr>`;
+      });
+
+      calculateTotals();
+    };
+
+    window.calculateTotals = function() {
+      const localTotalEl = document.getElementById("procurement-local-total");
+      const twdTotalEl = document.getElementById("procurement-twd-total");
+      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
+      const currencyRate = parseFloat(document.getElementById("currency-rate")?.value) || 0.21;
+
+      let grandLocalTotal = 0;
+
+      Object.keys(localPrices).forEach(k => {
+        const price = parseFloat(localPrices[k]) || 0;
+        const qtyEl = document.getElementById(`qty-${k}`);
+        if (qtyEl) {
+          const qty = parseInt(qtyEl.innerText) || 0;
+          grandLocalTotal += price * qty;
+        }
+      });
+
+      if (localTotalEl) localTotalEl.innerText = `${currencySymbol} ${grandLocalTotal.toLocaleString()}`;
+      if (twdTotalEl) {
+        const twdVal = Math.round(grandLocalTotal * currencyRate);
+        twdTotalEl.innerText = `NT$ ${twdVal.toLocaleString()}`;
+      }
+    };
+
+    window.updateLocalPrice = function(key, val, qty) {
+      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
+      const numericVal = val === "" ? 0 : (parseFloat(val) || 0);
+      
+      localPrices[key] = val === "" ? null : numericVal;
+      
+      const subtotalEl = document.getElementById(`subtotal-${key}`);
+      if (subtotalEl) {
+        subtotalEl.innerText = `${currencySymbol} ${(numericVal * qty).toLocaleString()}`;
+      }
+      
+      calculateTotals();
+      set(ref(db, `procurement_local_prices/${key}`), val === "" ? null : numericVal);
+    };
+
+    // 取得平台莫蘭迪專屬配色標籤
+    function getPlatformBadge(platform) {
+      const p = (platform || '').trim();
+      let bgClass = "bg-[#8F9E93]"; // 預設莫蘭迪鼠尾草綠 (LINE)
+
+      if (p === "Threads") {
+        bgClass = "bg-[#3A3837]"; // 莫蘭迪深黑
+      } else if (p === "IG" || p === "Instagram") {
+        bgClass = "bg-[#B08889]"; // 莫蘭迪乾燥玫瑰紅
+      } else if (p === "FB" || p === "Facebook") {
+        bgClass = "bg-[#6C7D8E]"; // 莫蘭迪灰藍
+      }
+
+      return `<span class="${bgClass} text-white px-2.5 py-1 rounded-lg text-xs font-semibold shadow-xs">${p}</span>`;
+    }
+
+    function renderQueue() {
+      const tbody = document.getElementById("queue-tbody");
+      const grandTotalEl = document.getElementById("queue-grand-total");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      let grandTotal = 0;
+
+      orders.forEach((o) => {
+        const details = (o.items || []).map(i => {
+          const specText = i.spec && i.spec.trim() !== '' ? `(${i.spec})` : '';
+          return `${i.name}${specText}x${i.qty}`;
+        }).join(", ");
+        
+        const amount = Number(o.totalAmount || 0);
+        grandTotal += amount;
+
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-white transition-colors cursor-grab active:cursor-grabbing";
+        tr.draggable = true;
+        tr.dataset.id = o.id;
+
+        tr.addEventListener("dragstart", (e) => {
+          draggedOrderId = o.id;
+          e.dataTransfer.effectAllowed = "move";
+          tr.classList.add("opacity-40");
+        });
+
+        tr.addEventListener("dragend", () => {
+          tr.classList.remove("opacity-40");
+          draggedOrderId = null;
+        });
+
+        tr.addEventListener("dragover", (e) => e.preventDefault());
+
+        tr.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (draggedOrderId && draggedOrderId !== o.id) {
+            reorderOrders(draggedOrderId, o.id);
+          }
+        });
+
+        tr.innerHTML = `
+          <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm" title="拖曳排序"></i></td>
+          <td class="p-2 sm:p-3 text-xs text-[#7A726E] whitespace-nowrap">${o.createdAtStr || ''}</td>
+          <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
+          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${o.customerName || ''}</td>
+          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${details}</td>
+          <td class="p-2 sm:p-3 text-right font-bold text-[#B08889] whitespace-nowrap">NT$ ${amount}</td>
+          <td class="p-2 sm:p-3 text-center"><button onclick="remove(ref(db, 'orders/${o.id}'))" class="text-red-400 hover:text-red-600 transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandTotal.toLocaleString()}`;
+    }
+
+    function reorderOrders(draggedId, targetId) {
+      const orderIds = orders.map(o => o.id);
+      const dragIdx = orderIds.indexOf(draggedId);
+      const targetIdx = orderIds.indexOf(targetId);
+
+      if (dragIdx < 0 || targetIdx < 0) return;
+
+      orderIds.splice(dragIdx, 1);
+      orderIds.splice(targetIdx, 0, draggedId);
+
+      const updates = {};
+      orderIds.forEach((id, index) => {
+        updates[`orders/${id}/orderIndex`] = index;
+      });
+
+      update(ref(db), updates);
+    }
+
+    function renderProducts() {
+      const grid = document.getElementById("admin-product-grid");
+      if (!grid) return;
+      grid.innerHTML = "";
+
+      const sortedIds = Object.keys(catalog).sort((a, b) => (catalog[a].order ?? 9999) - (catalog[b].order ?? 9999));
+
+      sortedIds.forEach(id => {
+        const item = catalog[id];
+        const isOutOfStock = item.isOutOfStock || false;
+        const card = document.createElement("div");
+        card.className = `border border-[#D5D0CC] rounded-2xl p-3.5 sm:p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing ${isOutOfStock ? 'bg-gray-50' : ''}`;
+        card.draggable = true;
+        card.dataset.id = id;
+
+        card.addEventListener("dragstart", (e) => {
+          draggedItemId = id;
+          e.dataTransfer.effectAllowed = "move";
+          card.classList.add("opacity-40");
+        });
+
+        card.addEventListener("dragend", () => {
+          card.classList.remove("opacity-40");
+          draggedItemId = null;
+        });
+
+        card.addEventListener("dragover", (e) => e.preventDefault());
+
+        card.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (draggedItemId && draggedItemId !== id) {
+            reorderProducts(draggedItemId, id);
+          }
+        });
+
+        const specText = item.spec && item.spec.trim() !== '' ? `<span class="text-xs text-[#A39E9A]">(${item.spec})</span>` : '';
+
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-center mb-2 text-[#A39E9A]">
+              <i class="fa-solid fa-grip-vertical text-sm" title="按住拖曳排序"></i>
+              <button onclick="toggleStockStatus('${id}', ${!isOutOfStock})" class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+                ${isOutOfStock ? '已停售/無庫存' : '正常供貨中'}
+              </button>
+            </div>
+            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1 ${isOutOfStock ? 'filter grayscale opacity-60' : ''}"><img src="${item.image}" class="w-full h-full object-contain rounded-lg pointer-events-none" onerror="this.parentElement.style.display='none'"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3 pointer-events-none ${isOutOfStock ? 'filter grayscale opacity-60' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
+            <div class="font-bold text-sm text-[#4A4543] ${isOutOfStock ? 'text-gray-400' : ''}">${item.name} ${specText}</div>
+            <div class="text-[#B08889] font-semibold text-sm mt-1 ${isOutOfStock ? 'text-gray-400 line-through' : ''}">NT$ ${item.price}</div>
+          </div>
+          <div class="flex gap-2 pt-2 border-t border-[#EFECE9]">
+            <button onclick="editProduct('${id}')" class="flex-1 py-1.5 bg-[#EFECE9] text-[#4A4543] text-xs font-bold rounded-xl">修改</button>
+            <button onclick="remove(ref(db, 'catalog/${id}'))" class="flex-1 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl">刪除</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    window.toggleStockStatus = function(id, status) {
+      update(ref(db, `catalog/${id}`), { isOutOfStock: status });
+    };
+
+    function reorderProducts(draggedId, targetId) {
+      const sortedIds = Object.keys(catalog).sort((a, b) => (catalog[a].order ?? 9999) - (catalog[b].order ?? 9999));
+      const dragIdx = sortedIds.indexOf(draggedId);
+      const targetIdx = sortedIds.indexOf(targetId);
+
+      if (dragIdx < 0 || targetIdx < 0) return;
+
+      sortedIds.splice(dragIdx, 1);
+      sortedIds.splice(targetIdx, 0, draggedId);
+
+      const updates = {};
+      sortedIds.forEach((id, index) => {
+        updates[`catalog/${id}/order`] = index;
+      });
+
+      update(ref(db), updates);
+    }
+
+    window.exportToExcel = function() {
+      if (!orders || orders.length === 0) return alert("目前尚無訂單可供匯出！");
+      const excelData = orders.map((o, idx) => ({
+        "項次": idx + 1,
+        "下單時間": o.createdAtStr || "",
+        "來源平台": o.platform || "",
+        "買家 ID/暱稱": o.customerName || "",
+        "訂購商品明細": (o.items || []).map(i => {
+          const specText = i.spec && i.spec.trim() !== '' ? `(${i.spec})` : '';
+          return `${i.name}${specText} x ${i.qty}`;
+        }).join("\n"),
+        "訂單總金額 (NT$)": o.totalAmount || 0
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      worksheet['!cols'] = [{ wch: 6 }, { wch: 22 }, { wch: 12 }, { wch: 18 }, { wch: 40 }, { wch: 16 }];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "排隊出貨清單");
+      const today = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `奶油雜貨店_出貨清單_${today}.xlsx`);
+    };
+
+    function processSquareImage(file, callback) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const targetSize = 500;
+          const canvas = document.createElement("canvas");
+          canvas.width = targetSize;
+          canvas.height = targetSize;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, targetSize, targetSize);
+          let drawWidth, drawHeight, offsetX, offsetY;
+          if (img.width > img.height) {
+            drawWidth = targetSize;
+            drawHeight = (img.height / img.width) * targetSize;
+            offsetX = 0;
+            offsetY = (targetSize - drawHeight) / 2;
+          } else {
+            drawHeight = targetSize;
+            drawWidth = (img.width / img.height) * targetSize;
+            offsetX = (targetSize - drawWidth) / 2;
+            offsetY = 0;
+          }
+          ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+          callback(canvas.toDataURL("image/jpeg", 0.85));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    window.saveProduct = function(e) {
+      e.preventDefault();
+      const editId = document.getElementById("edit-id").value;
+      const name = document.getElementById("p-name").value.trim();
+      const spec = document.getElementById("p-spec").value.trim();
+      const price = Number(document.getElementById("p-price").value);
+      const isOutOfStock = document.getElementById("p-status").value === "out_of_stock";
+      const fileInput = document.getElementById("p-image-file");
+
+      const saveData = (imageUrl) => {
+        const payload = { name, spec, price, isOutOfStock };
+        if (imageUrl !== undefined) payload.image = imageUrl;
+
+        if (editId) {
+          update(ref(db, `catalog/${editId}`), payload).then(() => resetForm());
+        } else {
+          payload.image = imageUrl || "";
+          payload.order = Object.keys(catalog).length;
+          set(push(ref(db, "catalog")), payload).then(() => resetForm());
+        }
+      };
+
+      if (fileInput.files && fileInput.files[0]) {
+        processSquareImage(fileInput.files[0], (squareBase64) => {
+          saveData(squareBase64);
+        });
+      } else {
+        saveData(editId ? undefined : "");
+      }
+    };
+
+    window.editProduct = function(id) {
+      const item = catalog[id];
+      if (!item) return;
+      document.getElementById("edit-id").value = id;
+      document.getElementById("p-name").value = item.name;
+      document.getElementById("p-spec").value = item.spec || "";
+      document.getElementById("p-price").value = item.price;
+      document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
+      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
+      document.getElementById("submit-btn").innerText = "確認修改";
+      document.getElementById("cancel-edit-btn").classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.resetForm = function() {
+      document.getElementById("edit-id").value = "";
+      document.getElementById("p-name").value = "";
+      document.getElementById("p-spec").value = "";
+      document.getElementById("p-price").value = "";
+      document.getElementById("p-status").value = "available";
+      document.getElementById("p-image-file").value = "";
+      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-gift text-[#B08889]"></i> 新增上架商品`;
+      document.getElementById("submit-btn").innerText = "確認上架";
+      document.getElementById("cancel-edit-btn").classList.add("hidden");
+    };
+  </script>
+</body>
+</html>
