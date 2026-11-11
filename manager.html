@@ -29,6 +29,10 @@
     .text-\[\#A39E9A\] { color: #A39E9A !important; }
     .border-\[\#D5D0CC\] { border-color: #D5D0CC !important; }
     .border-\[\#EFECE9\] { border-color: #EFECE9 !important; }
+
+    /* 手機模式滾動優化 */
+    .scrollbar-none::-webkit-scrollbar { display: none; }
+    .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 
   <script type="importmap">
@@ -45,7 +49,7 @@
 
   <!-- 登入遮罩 -->
   <div id="auth-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center p-4">
-    <div class="bg-[#F8F6F4] p-8 rounded-3xl shadow-xl max-w-sm w-full space-y-5 text-center border border-[#D5D0CC]">
+    <div class="bg-[#F8F6F4] p-6 sm:p-8 rounded-3xl shadow-xl max-w-sm w-full space-y-5 text-center border border-[#D5D0CC]">
       <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto text-[#B08889]" style="background-color: rgba(176, 136, 137, 0.2);">
         <i class="fa-solid fa-tree text-2xl"></i>
       </div>
@@ -68,60 +72,64 @@
     </div>
   </div>
 
-  <div id="admin-content" class="hidden max-w-6xl mx-auto px-4 mt-6 space-y-6">
-    <header class="bg-[#F8F6F4] p-5 rounded-2xl shadow-sm flex justify-between items-center border border-[#D5D0CC]">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-[#8F9E93]" style="background-color: rgba(143, 158, 147, 0.2);">
-          <i class="fa-solid fa-cookie-bite text-lg"></i>
+  <div id="admin-content" class="hidden max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+    <header class="bg-[#F8F6F4] p-4 sm:p-5 rounded-2xl shadow-sm flex justify-between items-center border border-[#D5D0CC]">
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-[#8F9E93]" style="background-color: rgba(143, 158, 147, 0.2);">
+          <i class="fa-solid fa-cookie-bite text-base sm:text-lg"></i>
         </div>
-        <h1 class="text-xl font-bold text-[#4A4543]">奶油雜貨店 · 管理後台</h1>
+        <h1 class="text-lg sm:text-xl font-bold text-[#4A4543]">奶油雜貨店 · 管理後台</h1>
       </div>
-      <button onclick="handleLogout()" class="px-4 py-2 bg-[#E2DEDA] text-[#4A4543] text-xs font-bold rounded-xl transition-all">安全登出</button>
+      <button onclick="handleLogout()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-[#E2DEDA] text-[#4A4543] text-xs font-bold rounded-xl transition-all whitespace-nowrap">登出</button>
     </header>
 
-    <!-- 標籤導覽 -->
-    <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-hidden shadow-sm p-1 gap-1">
-      <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 py-2.5 font-bold text-sm bg-[#B08889] text-white rounded-xl transition-all">採購統計</button>
-      <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">排隊清單</button>
-      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">商品管理</button>
+    <!-- 標籤導覽 (支援手機滑動) -->
+    <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-x-auto scrollbar-none shadow-sm p-1 gap-1">
+      <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl transition-all whitespace-nowrap">採購統計</button>
+      <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">排隊清單</button>
+      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">商品管理</button>
     </div>
 
     <!-- 1. 採購總統計表 -->
-    <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
-      <div class="flex justify-between items-center flex-wrap gap-3 border-b border-[#EFECE9] pb-3">
-        <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
+    <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
+      <div class="flex justify-between items-center flex-wrap gap-2.5 border-b border-[#EFECE9] pb-3">
+        <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
           <i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單
         </h3>
         
-        <div class="flex items-center gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs">
-          <span class="text-[#7A726E] font-medium pl-1">採購貨幣：</span>
-          <input type="text" id="currency-symbol" value="JP¥" oninput="renderProcurement()" placeholder="例如 JP¥" class="w-14 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
-          <span class="text-[#7A726E] font-medium pl-2">台幣匯率：</span>
-          <input type="number" id="currency-rate" value="0.21" step="0.001" oninput="renderProcurement()" placeholder="匯率" class="w-16 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+        <div class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
+          <div class="flex items-center gap-1">
+            <span class="text-[#7A726E] font-medium">貨幣：</span>
+            <input type="text" id="currency-symbol" value="JP¥" oninput="renderProcurement()" placeholder="JP¥" class="w-12 sm:w-14 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-[#7A726E] font-medium pl-1">匯率：</span>
+            <input type="number" id="currency-rate" value="0.21" step="0.001" oninput="renderProcurement()" placeholder="匯率" class="w-16 sm:w-16 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+          </div>
         </div>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
+      <div class="overflow-x-auto -mx-3 sm:mx-0">
+        <table class="w-full text-left text-xs sm:text-sm min-w-[600px] sm:min-w-full">
           <thead>
             <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
-              <th class="p-3 w-12 text-center rounded-l-xl">已購</th>
-              <th class="p-3">商品名稱</th>
-              <th class="p-3">規格</th>
-              <th class="p-3 text-right">總數量</th>
-              <th class="p-3 text-right">單價 (<span class="header-curr-label">JP¥</span>)</th>
-              <th class="p-3 text-right rounded-r-xl">小計 (<span class="header-curr-label">JP¥</span>)</th>
+              <th class="p-2 sm:p-3 w-10 text-center rounded-l-xl">已購</th>
+              <th class="p-2 sm:p-3">商品名稱</th>
+              <th class="p-2 sm:p-3">規格</th>
+              <th class="p-2 sm:p-3 text-right">總數量</th>
+              <th class="p-2 sm:p-3 text-right">單價 (<span class="header-curr-label">JP¥</span>)</th>
+              <th class="p-2 sm:p-3 text-right rounded-r-xl">小計 (<span class="header-curr-label">JP¥</span>)</th>
             </tr>
           </thead>
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
-              <td id="procurement-local-total" class="p-3 text-right text-[#B08889] text-base font-black whitespace-nowrap">JP¥ 0</td>
+              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
+              <td id="procurement-local-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">JP¥ 0</td>
             </tr>
             <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
-              <td colspan="5" class="p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
-              <td id="procurement-twd-total" class="p-3 text-right text-[#8F9E93] text-sm font-black whitespace-nowrap">NT$ 0</td>
+              <td colspan="5" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
+              <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-xs sm:text-sm font-black whitespace-nowrap">NT$ 0</td>
             </tr>
           </tfoot>
         </table>
@@ -129,34 +137,34 @@
     </div>
 
     <!-- 2. 排隊出貨清單 -->
-    <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
+    <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-2">
-        <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
-          <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單時間排序之客戶訂單（可拖曳順序）
+        <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單時間排序之客戶訂單
         </h3>
-        <button onclick="exportToExcel()" class="px-4 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2">
+        <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
         </button>
       </div>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
+      <div class="overflow-x-auto -mx-3 sm:mx-0">
+        <table class="w-full text-left text-xs sm:text-sm min-w-[650px] sm:min-w-full">
           <thead>
             <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
-              <th class="p-3 w-10 text-center rounded-l-xl">排序</th>
-              <th class="p-3">時間</th>
-              <th class="p-3">平台</th>
-              <th class="p-3">買家</th>
-              <th class="p-3">明細</th>
-              <th class="p-3 text-right whitespace-nowrap">金額</th>
-              <th class="p-3 text-center rounded-r-xl">刪除</th>
+              <th class="p-2 sm:p-3 w-8 text-center rounded-l-xl">排序</th>
+              <th class="p-2 sm:p-3">時間</th>
+              <th class="p-2 sm:p-3">平台</th>
+              <th class="p-2 sm:p-3">買家</th>
+              <th class="p-2 sm:p-3">明細</th>
+              <th class="p-2 sm:p-3 text-right whitespace-nowrap">金額</th>
+              <th class="p-2 sm:p-3 text-center rounded-r-xl">刪除</th>
             </tr>
           </thead>
           <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單總計金額：</td>
-              <td id="queue-grand-total" class="p-3 text-right text-[#B08889] text-base font-black whitespace-nowrap">NT$ 0</td>
-              <td class="p-3 rounded-r-xl"></td>
+              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單總計金額：</td>
+              <td id="queue-grand-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">NT$ 0</td>
+              <td class="p-2.5 sm:p-3 rounded-r-xl"></td>
             </tr>
           </tfoot>
         </table>
@@ -164,9 +172,9 @@
     </div>
 
     <!-- 3. 商品定價與縮圖管理 -->
-    <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-6">
-      <div class="border border-[#D5D0CC] p-5 rounded-2xl bg-[#FAF9F7] space-y-4">
-        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
+    <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-4 sm:space-y-6">
+      <div class="border border-[#D5D0CC] p-4 sm:p-5 rounded-2xl bg-[#FAF9F7] space-y-3 sm:space-y-4">
+        <h3 id="form-title" class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
         <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-center">
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
@@ -180,14 +188,14 @@
             <label class="block text-xs text-[#7A726E] mb-1">上傳圖片</label>
             <input type="file" id="p-image-file" accept="image/*" class="text-xs w-full">
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 pt-1 sm:pt-0">
             <button type="submit" id="submit-btn" class="flex-1 py-2.5 bg-[#8F9E93] text-white font-bold rounded-xl text-sm shadow-sm">確認上架</button>
             <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-2.5 bg-[#D5D0CC] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
           </div>
         </form>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="admin-product-grid"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" id="admin-product-grid"></div>
     </div>
   </div>
 
@@ -248,10 +256,10 @@
     window.switchTab = function(tab) {
       ['procurement', 'queue', 'products'].forEach(t => {
         document.getElementById(`tab-${t}`).classList.add('hidden');
-        document.getElementById(`tab-btn-${t}`).className = "flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all";
+        document.getElementById(`tab-btn-${t}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap";
       });
       document.getElementById(`tab-${tab}`).classList.remove('hidden');
-      document.getElementById(`tab-btn-${tab}`).className = "flex-1 py-2.5 font-bold text-sm bg-[#B08889] text-white rounded-xl shadow-sm transition-all";
+      document.getElementById(`tab-btn-${tab}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl shadow-sm transition-all whitespace-nowrap";
     };
 
     function renderAll() {
@@ -260,7 +268,6 @@
       renderProducts();
     }
 
-    // 將內嵌字串做 Firebase 安全 key 轉換
     function sanitizeKey(str) {
       return (str || '').replace(/[.#$/\[\]]/g, "_");
     }
@@ -294,21 +301,20 @@
 
         tbody.innerHTML += `
           <tr class="${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors">
-            <td class="p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
-            <td class="p-3 font-bold text-[#4A4543]">${item.name}</td>
-            <td class="p-3 text-[#7A726E]">${item.spec || '-'}</td>
-            <td class="p-3 text-right font-black text-[#B08889] text-base" id="qty-${k}">${item.totalQty}</td>
-            <td class="p-3 text-right">
-              <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" class="w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
+            <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
+            <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${item.name}</td>
+            <td class="p-2 sm:p-3 text-[#7A726E]">${item.spec || '-'}</td>
+            <td class="p-2 sm:p-3 text-right font-black text-[#B08889] text-sm sm:text-base" id="qty-${k}">${item.totalQty}</td>
+            <td class="p-2 sm:p-3 text-right">
+              <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" class="w-20 sm:w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
             </td>
-            <td class="p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
+            <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
           </tr>`;
       });
 
       calculateTotals();
     };
 
-    // 計算小計與底部總金額
     window.calculateTotals = function() {
       const localTotalEl = document.getElementById("procurement-local-total");
       const twdTotalEl = document.getElementById("procurement-twd-total");
@@ -333,7 +339,6 @@
       }
     };
 
-    // 輸入時即時更新畫面與寫入資料庫
     window.updateLocalPrice = function(key, val, qty) {
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
       const numericVal = val === "" ? 0 : (parseFloat(val) || 0);
@@ -392,13 +397,13 @@
         });
 
         tr.innerHTML = `
-          <td class="p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-sm" title="拖曳排序"></i></td>
-          <td class="p-3 text-xs text-[#7A726E] whitespace-nowrap">${o.createdAtStr || ''}</td>
-          <td class="p-3"><span class="bg-[#8F9E93] bg-opacity-20 text-[#4E5C53] px-2.5 py-1 rounded-lg text-xs font-semibold">${o.platform || ''}</span></td>
-          <td class="p-3 font-bold text-[#4A4543]">${o.customerName || ''}</td>
-          <td class="p-3 text-xs text-[#7A726E]">${details}</td>
-          <td class="p-3 text-right font-bold text-[#B08889] whitespace-nowrap">NT$ ${amount}</td>
-          <td class="p-3 text-center"><button onclick="remove(ref(db, 'orders/${o.id}'))" class="text-red-400 hover:text-red-600 transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+          <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm" title="拖曳排序"></i></td>
+          <td class="p-2 sm:p-3 text-xs text-[#7A726E] whitespace-nowrap">${o.createdAtStr || ''}</td>
+          <td class="p-2 sm:p-3"><span class="bg-[#8F9E93] bg-opacity-20 text-[#4E5C53] px-2 py-0.5 rounded-lg text-xs font-semibold">${o.platform || ''}</span></td>
+          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${o.customerName || ''}</td>
+          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${details}</td>
+          <td class="p-2 sm:p-3 text-right font-bold text-[#B08889] whitespace-nowrap">NT$ ${amount}</td>
+          <td class="p-2 sm:p-3 text-center"><button onclick="remove(ref(db, 'orders/${o.id}'))" class="text-red-400 hover:text-red-600 transition-colors"><i class="fa-solid fa-trash"></i></button></td>
         `;
         tbody.appendChild(tr);
       });
@@ -435,7 +440,7 @@
         const item = catalog[id];
         const isOutOfStock = item.isOutOfStock || false;
         const card = document.createElement("div");
-        card.className = `border border-[#D5D0CC] rounded-2xl p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing ${isOutOfStock ? 'bg-gray-50' : ''}`;
+        card.className = `border border-[#D5D0CC] rounded-2xl p-3.5 sm:p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing ${isOutOfStock ? 'bg-gray-50' : ''}`;
         card.draggable = true;
         card.dataset.id = id;
 
@@ -594,7 +599,7 @@
       document.getElementById("edit-id").value = id;
       document.getElementById("p-name").value = item.name;
       document.getElementById("p-spec").value = item.spec || "";
-      document.getElementById("p-[#price]").value = item.price;
+      document.getElementById("p-price").value = item.price;
       document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
       document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
       document.getElementById("submit-btn").innerText = "確認修改";
