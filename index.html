@@ -21,6 +21,8 @@
     .bg-\[\#F8F6F4\] { background-color: #F8F6F4 !important; }
     .bg-\[\#B08889\] { background-color: #B08889 !important; }
     .bg-\[\#8F9E93\] { background-color: #8F9E93 !important; }
+    .bg-\[\#3A3837\] { background-color: #3A3837 !important; }
+    .bg-\[\#6C7D8E\] { background-color: #6C7D8E !important; }
     .bg-\[\#E2DEDA\] { background-color: #E2DEDA !important; }
     .text-\[\#4A4543\] { color: #4A4543 !important; }
     .text-\[\#B08889\] { color: #B08889 !important; }
@@ -43,7 +45,7 @@
 </head>
 <body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-24 sm:pb-12">
 
-  <!-- 頁首導覽：店名中英文換行 -->
+  <!-- 頁首導覽 -->
   <header class="bg-[#F8F6F4] border-b border-[#D5D0CC] shadow-sm sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
       <div class="flex items-center gap-2.5 sm:gap-3">
@@ -105,11 +107,11 @@
           <form onsubmit="submitCustomerOrder(event)" class="space-y-3.5 pt-3 border-t border-[#EFECE9]">
             <div>
               <label class="block text-xs font-semibold text-[#7A726E] mb-1">喊單平台</label>
-              <select id="cust-platform" onchange="updatePlatformStyle()" class="w-full text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none font-bold transition-all">
-                <option value="LINE">LINE</option>
-                <option value="Threads">Threads</option>
-                <option value="IG">Instagram (IG)</option>
-                <option value="FB">Facebook (FB)</option>
+              <select id="cust-platform" onchange="updatePlatformStyle()" class="w-full text-sm p-2.5 rounded-xl focus:outline-none font-bold transition-all border border-[#D5D0CC]">
+                <option value="LINE" class="bg-white text-[#4A4543]">LINE</option>
+                <option value="Threads" class="bg-[#3A3837] text-white">Threads</option>
+                <option value="IG" class="bg-[#B08889] text-white">Instagram (IG)</option>
+                <option value="FB" class="bg-[#6C7D8E] text-white">Facebook (FB)</option>
               </select>
             </div>
             <div>
@@ -154,6 +156,10 @@
     let catalogProducts = {};
     let currentCart = {};
 
+    document.addEventListener("DOMContentLoaded", () => {
+      updatePlatformStyle();
+    });
+
     onValue(ref(db, "catalog"), (snapshot) => {
       catalogProducts = snapshot.val() || {};
       
@@ -176,18 +182,18 @@
     window.updatePlatformStyle = function() {
       const select = document.getElementById("cust-platform");
       if (!select) return;
-      const p = select.value;
+      const val = select.value;
 
-      select.classList.remove("bg-[#8F9E93]", "bg-[#3A3837]", "bg-[#B08889]", "bg-[#6C7D8E]", "text-white", "bg-white", "text-[#4A4543]");
+      select.style.color = "#FFFFFF";
 
-      if (p === "Threads") {
-        select.classList.add("bg-[#3A3837]", "text-white");
-      } else if (p === "IG" || p === "Instagram (IG)") {
-        select.classList.add("bg-[#B08889]", "text-white");
-      } else if (p === "FB" || p === "Facebook (FB)") {
-        select.classList.add("bg-[#6C7D8E]", "text-white");
+      if (val === "Threads") {
+        select.style.backgroundColor = "#3A3837"; // 莫蘭迪深黑
+      } else if (val === "IG") {
+        select.style.backgroundColor = "#B08889"; // 莫蘭迪乾燥玫瑰紅
+      } else if (val === "FB") {
+        select.style.backgroundColor = "#6C7D8E"; // 莫蘭迪灰藍
       } else {
-        select.classList.add("bg-[#8F9E93]", "text-white");
+        select.style.backgroundColor = "#8F9E93"; // 莫蘭迪鼠尾草綠 (LINE)
       }
     };
 
