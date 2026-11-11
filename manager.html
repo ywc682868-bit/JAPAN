@@ -4,9 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>奶油雜貨店 - 管理後台</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
+  <style>
+    body { background-color: #EFECE9 !important; color: #4A4543 !important; }
+    .bg-morandi-card { background-color: #F8F6F4 !important; }
+    .bg-rose-pink { background-color: #B08889 !important; }
+    .bg-sage-green { background-color: #8F9E93 !important; }
+    .text-morandi-pink { color: #B08889 !important; }
+    .text-morandi-dark { color: #4A4543 !important; }
+    .text-morandi-sub { color: #7A726E !important; }
+    .border-morandi { border-color: #D5D0CC !important; }
+    
+    .bg-\[\#EFECE9\] { background-color: #EFECE9 !important; }
+    .bg-\[\#F8F6F4\] { background-color: #F8F6F4 !important; }
+    .bg-\[\#B08889\] { background-color: #B08889 !important; }
+    .bg-\[\#8F9E93\] { background-color: #8F9E93 !important; }
+    .bg-\[\#E2DEDA\] { background-color: #E2DEDA !important; }
+    .text-\[\#4A4543\] { color: #4A4543 !important; }
+    .text-\[\#B08889\] { color: #B08889 !important; }
+    .text-\[\#7A726E\] { color: #7A726E !important; }
+    .text-\[\#A39E9A\] { color: #A39E9A !important; }
+    .border-\[\#D5D0CC\] { border-color: #D5D0CC !important; }
+    .border-\[\#EFECE9\] { border-color: #EFECE9 !important; }
+  </style>
+
   <script type="importmap">
     {
       "imports": {
@@ -19,9 +43,9 @@
 </head>
 <body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-12">
 
-  <div id="auth-overlay" class="fixed inset-0 bg-[#3E3A39]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="auth-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center p-4">
     <div class="bg-[#F8F6F4] p-8 rounded-3xl shadow-xl max-w-sm w-full space-y-5 text-center border border-[#D5D0CC]">
-      <div class="w-14 h-14 bg-[#B08889]/20 rounded-full flex items-center justify-center mx-auto text-[#B08889]">
+      <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto text-[#B08889]" style="background-color: rgba(176, 136, 137, 0.2);">
         <i class="fa-solid fa-tree text-2xl"></i>
       </div>
       <div>
@@ -31,27 +55,27 @@
       <form onsubmit="handleLogin(event)" class="space-y-3 text-left">
         <div>
           <label class="block text-xs font-semibold text-[#7A726E] mb-1">管理員 Email</label>
-          <input type="email" id="admin-email" required placeholder="admin@butter.com" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
+          <input type="email" id="admin-email" required placeholder="admin@butter.com" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
         </div>
         <div>
           <label class="block text-xs font-semibold text-[#7A726E] mb-1">密碼</label>
-          <input type="password" id="admin-password" required placeholder="••••••••" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
+          <input type="password" id="admin-password" required placeholder="••••••••" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
         </div>
-        <button type="submit" class="w-full py-3 bg-[#B08889] hover:bg-[#9E7778] text-white font-bold rounded-xl shadow-sm transition-all">登入後台</button>
+        <button type="submit" class="w-full py-3 bg-[#B08889] text-white font-bold rounded-xl shadow-sm transition-all">登入後台</button>
       </form>
-      <p id="login-error" class="text-xs text-rose-500 font-medium"></p>
+      <p id="login-error" class="text-xs text-red-500 font-medium"></p>
     </div>
   </div>
 
   <div id="admin-content" class="hidden max-w-6xl mx-auto px-4 mt-6 space-y-6">
     <header class="bg-[#F8F6F4] p-5 rounded-2xl shadow-sm flex justify-between items-center border border-[#D5D0CC]">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 bg-[#8F9E93]/20 rounded-xl flex items-center justify-center text-[#8F9E93]">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center text-[#8F9E93]" style="background-color: rgba(143, 158, 147, 0.2);">
           <i class="fa-solid fa-cookie-bite text-lg"></i>
         </div>
         <h1 class="text-xl font-bold text-[#4A4543]">奶油雜貨店 · 管理後台</h1>
       </div>
-      <button onclick="handleLogout()" class="px-4 py-2 bg-[#E2DEDA] hover:bg-[#D5D0CC] text-[#4A4543] text-xs font-bold rounded-xl transition-all">安全登出</button>
+      <button onclick="handleLogout()" class="px-4 py-2 bg-[#E2DEDA] text-[#4A4543] text-xs font-bold rounded-xl transition-all">安全登出</button>
     </header>
 
     <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-hidden shadow-sm p-1 gap-1">
@@ -61,7 +85,19 @@
     </div>
 
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
-      <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單</h3>
+      <div class="flex justify-between items-center flex-wrap gap-3 border-b border-[#EFECE9] pb-3">
+        <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
+          <i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單
+        </h3>
+        
+        <div class="flex items-center gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs">
+          <span class="text-[#7A726E] font-medium pl-1">採購貨幣：</span>
+          <input type="text" id="currency-symbol" value="JP¥" oninput="renderProcurement()" placeholder="例如 JP¥" class="w-14 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+          <span class="text-[#7A726E] font-medium pl-2">台幣匯率：</span>
+          <input type="number" id="currency-rate" value="0.21" step="0.001" oninput="renderProcurement()" placeholder="匯率" class="w-16 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+        </div>
+      </div>
+
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead>
@@ -70,19 +106,31 @@
               <th class="p-3">商品名稱</th>
               <th class="p-3">規格</th>
               <th class="p-3 text-right">總數量</th>
-              <th class="p-3 text-right">單價</th>
-              <th class="p-3 text-right rounded-r-xl">小計</th>
+              <th class="p-3 text-right">單價 (NT$)</th>
+              <th class="p-3 text-right rounded-r-xl">小計 (NT$)</th>
             </tr>
           </thead>
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
+          <tfoot>
+            <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
+              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl">採購總計金額 (NT$)：</td>
+              <td id="procurement-grand-total" class="p-3 text-right text-[#B08889] text-base font-black">NT$ 0</td>
+            </tr>
+            <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
+              <td colspan="5" class="p-3 text-right rounded-l-xl">當地貨幣估算總額 (<span id="local-curr-label">JP¥</span>)：</td>
+              <td id="procurement-local-total" class="p-3 text-right text-[#8F9E93] text-sm font-black">JP¥ 0</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
 
     <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-2">
-        <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單時間排序之客戶訂單</h3>
-        <button onclick="exportToExcel()" class="px-4 py-2 bg-[#8F9E93] hover:bg-[#7E8D82] text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2">
+        <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>客戶訂單排隊清單（按住圖示可拖曳自訂順序）
+        </h3>
+        <button onclick="exportToExcel()" class="px-4 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-2">
           <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
         </button>
       </div>
@@ -90,7 +138,7 @@
         <table class="w-full text-left text-sm">
           <thead>
             <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
-              <th class="p-3 w-12 rounded-l-xl">序</th>
+              <th class="p-3 w-10 text-center rounded-l-xl">排序</th>
               <th class="p-3">時間</th>
               <th class="p-3">平台</th>
               <th class="p-3">買家</th>
@@ -100,6 +148,13 @@
             </tr>
           </thead>
           <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
+          <tfoot>
+            <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
+              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl">所有訂單總計金額：</td>
+              <td id="queue-grand-total" class="p-3 text-right text-[#B08889] text-base font-black">NT$ 0</td>
+              <td class="p-3 rounded-r-xl"></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -109,20 +164,20 @@
         <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
         <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-center">
           <input type="hidden" id="edit-id">
-          <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
-          <input type="text" id="p-spec" placeholder="規格/顏色" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
-          <input type="number" id="p-price" required placeholder="單價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
-          <select id="p-status" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
+          <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="text" id="p-spec" placeholder="規格/顏色 (可留空)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="number" id="p-price" required placeholder="單價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <select id="p-status" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
             <option value="available">可下單喊單</option>
             <option value="out_of_stock">無庫存/停止喊單</option>
           </select>
           <div>
             <label class="block text-xs text-[#7A726E] mb-1">上傳圖片</label>
-            <input type="file" id="p-image-file" accept="image/*" class="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#8F9E93]/20 file:text-[#4A4543] hover:file:bg-[#8F9E93]/30">
+            <input type="file" id="p-image-file" accept="image/*" class="text-xs w-full">
           </div>
           <div class="flex gap-2">
-            <button type="submit" id="submit-btn" class="flex-1 py-2.5 bg-[#8F9E93] hover:bg-[#7E8D82] text-white font-bold rounded-xl text-sm shadow-sm transition-all">確認上架</button>
-            <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-2.5 bg-[#D5D0CC] hover:bg-[#C2BCB8] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
+            <button type="submit" id="submit-btn" class="flex-1 py-2.5 bg-[#8F9E93] text-white font-bold rounded-xl text-sm shadow-sm">確認上架</button>
+            <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-2.5 bg-[#D5D0CC] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
           </div>
         </form>
       </div>
@@ -152,6 +207,7 @@
 
     let catalog = {}, orders = [], checkedStatus = {};
     let draggedItemId = null;
+    let draggedOrderId = null;
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -177,7 +233,7 @@
       onValue(ref(db, "orders"), s => {
         const data = s.val() || {};
         orders = Object.keys(data).map(id => ({ id, ...data[id] }));
-        orders.sort((a, b) => a.timestamp - b.timestamp);
+        orders.sort((a, b) => (a.orderIndex ?? a.timestamp) - (b.orderIndex ?? b.timestamp));
         renderAll();
       });
       onValue(ref(db, "procurement_status"), s => { checkedStatus = s.val() || {}; renderProcurement(); });
@@ -198,60 +254,129 @@
       renderProducts();
     }
 
-    function renderProcurement() {
-  const tbody = document.getElementById("procurement-tbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  const map = {};
-  
-  orders.forEach(o => (o.items || []).forEach(i => {
-    // 自動去除商品名稱中的引號與前後空白，確保統計精準合併
-    const cleanName = (i.name || '').replace(/["']/g, '').trim();
-    const cleanSpec = (i.spec || '預設').trim();
-    const key = `${cleanName}_${cleanSpec}`;
-    
-    if (!map[key]) {
-      map[key] = { 
-        name: cleanName, 
-        spec: cleanSpec, 
-        price: i.price, 
-        totalQty: 0 
-      };
-    }
-    map[key].totalQty += i.qty;
-  }));
+    window.renderProcurement = function() {
+      const tbody = document.getElementById("procurement-tbody");
+      const grandTotalEl = document.getElementById("procurement-grand-total");
+      const localTotalEl = document.getElementById("procurement-local-total");
+      const localLabelEl = document.getElementById("local-curr-label");
+      
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      
+      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
+      const currencyRate = parseFloat(document.getElementById("currency-rate")?.value) || 0.21;
+      if (localLabelEl) localLabelEl.innerText = currencySymbol;
 
-  Object.keys(map).forEach(k => {
-    const item = map[k], checked = checkedStatus[k] || false;
-    tbody.innerHTML += `
-      <tr class="${checked ? 'bg-[#8F9E93]/10 line-through text-[#A39E9A]' : 'hover:bg-[#FAF9F7]'} transition-colors">
-        <td class="p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC] focus:ring-[#8F9E93]"></td>
-        <td class="p-3 font-bold text-[#4A4543]">${item.name}</td>
-        <td class="p-3 text-[#7A726E]">${item.spec || '-'}</td>
-        <td class="p-3 text-right font-black text-[#B08889] text-base">${item.totalQty}</td>
-        <td class="p-3 text-right text-[#7A726E]">NT$ ${item.price}</td>
-        <td class="p-3 text-right font-bold text-[#4A4543]">NT$ ${item.price * item.totalQty}</td>
-      </tr>`;
-  });
-}
+      const map = {};
+      orders.forEach(o => (o.items || []).forEach(i => {
+        const cleanName = (i.name || '').replace(/["']/g, '').trim();
+        const cleanSpec = (i.spec || '').trim();
+        const key = `${cleanName}_${cleanSpec || '預設'}`;
+        
+        if (!map[key]) {
+          map[key] = { name: cleanName, spec: cleanSpec, price: i.price, totalQty: 0 };
+        }
+        map[key].totalQty += i.qty;
+      }));
+
+      let grandTotalNT = 0;
+
+      Object.keys(map).forEach(k => {
+        const item = map[k], checked = checkedStatus[k] || false;
+        const subtotal = item.price * item.totalQty;
+        grandTotalNT += subtotal;
+
+        tbody.innerHTML += `
+          <tr class="${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors">
+            <td class="p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
+            <td class="p-3 font-bold text-[#4A4543]">${item.name}</td>
+            <td class="p-3 text-[#7A726E]">${item.spec || '-'}</td>
+            <td class="p-3 text-right font-black text-[#B08889] text-base">${item.totalQty}</td>
+            <td class="p-3 text-right text-[#7A726E]">NT$ ${item.price}</td>
+            <td class="p-3 text-right font-bold text-[#4A4543]">NT$ ${subtotal}</td>
+          </tr>`;
+      });
+
+      if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandTotalNT.toLocaleString()}`;
+      if (localTotalEl) {
+        const localVal = currencyRate > 0 ? Math.round(grandTotalNT / currencyRate) : 0;
+        localTotalEl.innerText = `${currencySymbol} ${localVal.toLocaleString()}`;
+      }
+    };
 
     function renderQueue() {
       const tbody = document.getElementById("queue-tbody");
+      const grandTotalEl = document.getElementById("queue-grand-total");
       if (!tbody) return;
       tbody.innerHTML = "";
-      orders.forEach((o, idx) => {
-        const details = (o.items || []).map(i => `${i.name}(${i.spec || ''})x${i.qty}`).join(", ");
-        tbody.innerHTML += `
-          <tr class="hover:bg-[#FAF9F7] transition-colors">
-            <td class="p-3 text-[#7A726E] font-medium">${idx + 1}</td>
-            <td class="p-3 text-xs text-[#7A726E]">${o.createdAtStr}</td>
-            <td class="p-3"><span class="bg-[#8F9E93]/20 text-[#4E5C53] px-2.5 py-1 rounded-lg text-xs font-semibold">${o.platform}</span></td>
-            <td class="p-3 font-bold text-[#4A4543]">${o.customerName}</td>
-            <td class="p-3 text-xs text-[#7A726E]">${details}</td>
-            <td class="p-3 text-right font-bold text-[#B08889]">NT$ ${o.totalAmount}</td>
-            <td class="p-3 text-center"><button onclick="remove(ref(db, 'orders/${o.id}'))" class="text-rose-400 hover:text-rose-600 transition-colors"><i class="fa-solid fa-trash"></i></button></td>
-          </tr>`;
+
+      let grandTotal = 0;
+
+      orders.forEach((o) => {
+        const details = (o.items || []).map(i => {
+          const specText = i.spec && i.spec.trim() !== '' ? `(${i.spec})` : '';
+          return `${i.name}${specText}x${i.qty}`;
+        }).join(", ");
+        
+        const amount = Number(o.totalAmount || 0);
+        grandTotal += amount;
+
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-white transition-colors cursor-grab active:cursor-grabbing";
+        tr.draggable = true;
+        tr.dataset.id = o.id;
+
+        tr.addEventListener("dragstart", (e) => {
+          draggedOrderId = o.id;
+          e.dataTransfer.effectAllowed = "move";
+          tr.classList.add("opacity-40");
+        });
+
+        tr.addEventListener("dragend", () => {
+          tr.classList.remove("opacity-40");
+          draggedOrderId = null;
+        });
+
+        tr.addEventListener("dragover", (e) => e.preventDefault());
+
+        tr.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (draggedOrderId && draggedOrderId !== o.id) {
+            reorderOrders(draggedOrderId, o.id);
+          }
+        });
+
+        tr.innerHTML = `
+          <td class="p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-sm" title="拖曳排序"></i></td>
+          <td class="p-3 text-xs text-[#7A726E] whitespace-nowrap">${o.createdAtStr || ''}</td>
+          <td class="p-3"><span class="bg-[#8F9E93] bg-opacity-20 text-[#4E5C53] px-2.5 py-1 rounded-lg text-xs font-semibold">${o.platform || ''}</span></td>
+          <td class="p-3 font-bold text-[#4A4543]">${o.customerName || ''}</td>
+          <td class="p-3 text-xs text-[#7A726E]">${details}</td>
+          <td class="p-3 text-right font-bold text-[#B08889] whitespace-nowrap">NT$ ${amount}</td>
+          <td class="p-3 text-center"><button onclick="remove(ref(db, 'orders/${o.id}'))" class="text-red-400 hover:text-red-600 transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+        `;
+        tbody.appendChild(tr);
       });
+
+      if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandTotal.toLocaleString()}`;
+    }
+
+    function reorderOrders(draggedId, targetId) {
+      const orderIds = orders.map(o => o.id);
+      const dragIdx = orderIds.indexOf(draggedId);
+      const targetIdx = orderIds.indexOf(targetId);
+
+      if (dragIdx < 0 || targetIdx < 0) return;
+
+      orderIds.splice(dragIdx, 1);
+      orderIds.splice(targetIdx, 0, draggedId);
+
+      const updates = {};
+      orderIds.forEach((id, index) => {
+        updates[`orders/${id}/orderIndex`] = index;
+      });
+
+      update(ref(db), updates);
     }
 
     function renderProducts() {
@@ -259,15 +384,13 @@
       if (!grid) return;
       grid.innerHTML = "";
 
-      const sortedIds = Object.keys(catalog).sort((a, b) => {
-        return (catalog[a].order ?? 9999) - (catalog[b].order ?? 9999);
-      });
+      const sortedIds = Object.keys(catalog).sort((a, b) => (catalog[a].order ?? 9999) - (catalog[b].order ?? 9999));
 
       sortedIds.forEach(id => {
         const item = catalog[id];
         const isOutOfStock = item.isOutOfStock || false;
         const card = document.createElement("div");
-        card.className = `border border-[#D5D0CC] rounded-2xl p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing hover:shadow-md transition-all ${isOutOfStock ? 'bg-slate-50' : ''}`;
+        card.className = `border border-[#D5D0CC] rounded-2xl p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing ${isOutOfStock ? 'bg-gray-50' : ''}`;
         card.draggable = true;
         card.dataset.id = id;
 
@@ -291,21 +414,23 @@
           }
         });
 
+        const specText = item.spec && item.spec.trim() !== '' ? `<span class="text-xs text-[#A39E9A]">(${item.spec})</span>` : '';
+
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-center mb-2 text-[#A39E9A]">
               <i class="fa-solid fa-grip-vertical text-sm" title="按住拖曳排序"></i>
-              <button onclick="toggleStockStatus('${id}', ${!isOutOfStock})" class="text-xs px-2 py-0.5 rounded-full font-medium transition-all ${isOutOfStock ? 'bg-rose-100 text-rose-700 hover:bg-rose-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}">
+              <button onclick="toggleStockStatus('${id}', ${!isOutOfStock})" class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
                 ${isOutOfStock ? '已停售/無庫存' : '正常供貨中'}
               </button>
             </div>
-            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1 ${isOutOfStock ? 'grayscale opacity-60' : ''}"><img src="${item.image}" class="w-full h-full object-contain rounded-lg pointer-events-none" onerror="this.parentElement.style.display='none'"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3 pointer-events-none ${isOutOfStock ? 'grayscale opacity-60' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
-            <div class="font-bold text-sm text-[#4A4543] ${isOutOfStock ? 'text-slate-400' : ''}">${item.name} <span class="text-xs text-[#A39E9A]">(${item.spec || '無'})</span></div>
-            <div class="text-[#B08889] font-semibold text-sm mt-1 ${isOutOfStock ? 'text-slate-400 line-through' : ''}">NT$ ${item.price}</div>
+            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1 ${isOutOfStock ? 'filter grayscale opacity-60' : ''}"><img src="${item.image}" class="w-full h-full object-contain rounded-lg pointer-events-none" onerror="this.parentElement.style.display='none'"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3 pointer-events-none ${isOutOfStock ? 'filter grayscale opacity-60' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
+            <div class="font-bold text-sm text-[#4A4543] ${isOutOfStock ? 'text-gray-400' : ''}">${item.name} ${specText}</div>
+            <div class="text-[#B08889] font-semibold text-sm mt-1 ${isOutOfStock ? 'text-gray-400 line-through' : ''}">NT$ ${item.price}</div>
           </div>
           <div class="flex gap-2 pt-2 border-t border-[#EFECE9]">
-            <button onclick="editProduct('${id}')" class="flex-1 py-1.5 bg-[#EFECE9] hover:bg-[#D5D0CC] text-[#4A4543] text-xs font-bold rounded-xl transition-all">修改</button>
-            <button onclick="remove(ref(db, 'catalog/${id}'))" class="flex-1 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition-all">刪除</button>
+            <button onclick="editProduct('${id}')" class="flex-1 py-1.5 bg-[#EFECE9] text-[#4A4543] text-xs font-bold rounded-xl">修改</button>
+            <button onclick="remove(ref(db, 'catalog/${id}'))" class="flex-1 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl">刪除</button>
           </div>
         `;
         grid.appendChild(card);
@@ -341,7 +466,10 @@
         "下單時間": o.createdAtStr || "",
         "來源平台": o.platform || "",
         "買家 ID/暱稱": o.customerName || "",
-        "訂購商品明細": (o.items || []).map(i => `${i.name}(${i.spec || '預設'}) x ${i.qty}`).join("\n"),
+        "訂購商品明細": (o.items || []).map(i => {
+          const specText = i.spec && i.spec.trim() !== '' ? `(${i.spec})` : '';
+          return `${i.name}${specText} x ${i.qty}`;
+        }).join("\n"),
         "訂單總金額 (NT$)": o.totalAmount || 0
       }));
       const worksheet = XLSX.utils.json_to_sheet(excelData);
