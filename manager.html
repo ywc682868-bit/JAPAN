@@ -86,7 +86,7 @@
       <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 py-2.5 font-bold text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all">商品管理</button>
     </div>
 
-    <!-- 1. 採購總統計表 (自訂當地價格、小計當地幣別、底部換算台幣) -->
+    <!-- 1. 採購總統計表 -->
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-3 border-b border-[#EFECE9] pb-3">
         <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
@@ -116,19 +116,19 @@
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
-              <td id="procurement-local-total" class="p-3 text-right text-[#B08889] text-base font-black">JP¥ 0</td>
+              <td colspan="5" class="p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額 (<span class="header-curr-label">JP¥</span>)：</td>
+              <td id="procurement-local-total" class="p-3 text-right text-[#B08889] text-base font-black whitespace-nowrap">JP¥ 0</td>
             </tr>
             <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
-              <td colspan="5" class="p-3 text-right rounded-l-xl">當地貨幣估算台幣總額 (NT$)：</td>
-              <td id="procurement-twd-total" class="p-3 text-right text-[#8F9E93] text-sm font-black">NT$ 0</td>
+              <td colspan="5" class="p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
+              <td id="procurement-twd-total" class="p-3 text-right text-[#8F9E93] text-sm font-black whitespace-nowrap">NT$ 0</td>
             </tr>
           </tfoot>
         </table>
       </div>
     </div>
 
-    <!-- 2. 排隊出貨清單 (可拖曳排序 + 總計金額保證一列顯示) -->
+    <!-- 2. 排隊出貨清單 -->
     <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-2">
         <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2">
@@ -260,24 +260,25 @@
       renderProducts();
     }
 
+    // 將內嵌字串做 Firebase 安全 key 轉換
+    function sanitizeKey(str) {
+      return (str || '').replace(/[.#$/\[\]]/g, "_");
+    }
+
     window.renderProcurement = function() {
       const tbody = document.getElementById("procurement-tbody");
-      const localTotalEl = document.getElementById("procurement-local-total");
-      const twdTotalEl = document.getElementById("procurement-twd-total");
-      
       if (!tbody) return;
       tbody.innerHTML = "";
       
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
-      const currencyRate = parseFloat(document.getElementById("currency-rate")?.value) || 0.21;
-      
       document.querySelectorAll(".header-curr-label").forEach(el => el.innerText = currencySymbol);
 
       const map = {};
       orders.forEach(o => (o.items || []).forEach(i => {
         const cleanName = (i.name || '').replace(/["']/g, '').trim();
         const cleanSpec = (i.spec || '').trim();
-        const key = `${cleanName}_${cleanSpec || '預設'}`;
+        const rawKey = `${cleanName}_${cleanSpec || '預設'}`;
+        const key = sanitizeKey(rawKey);
         
         if (!map[key]) {
           map[key] = { name: cleanName, spec: cleanSpec, price: i.price, totalQty: 0 };
@@ -285,26 +286,44 @@
         map[key].totalQty += i.qty;
       }));
 
-      let grandLocalTotal = 0;
-
       Object.keys(map).forEach(k => {
         const item = map[k], checked = checkedStatus[k] || false;
         const currentLocalPrice = localPrices[k] !== undefined ? localPrices[k] : "";
         const numericPrice = parseFloat(currentLocalPrice) || 0;
         const subtotalLocal = numericPrice * item.totalQty;
-        grandLocalTotal += subtotalLocal;
 
         tbody.innerHTML += `
           <tr class="${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors">
             <td class="p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="set(ref(db, 'procurement_status/${k}'), this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
             <td class="p-3 font-bold text-[#4A4543]">${item.name}</td>
             <td class="p-3 text-[#7A726E]">${item.spec || '-'}</td>
-            <td class="p-3 text-right font-black text-[#B08889] text-base">${item.totalQty}</td>
+            <td class="p-3 text-right font-black text-[#B08889] text-base" id="qty-${k}">${item.totalQty}</td>
             <td class="p-3 text-right">
-              <input type="number" placeholder="輸入單價" value="${currentLocalPrice}" onchange="updateLocalPrice('${k}', this.value)" class="w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
+              <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" class="w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-[#B08889]">
             </td>
-            <td class="p-3 text-right font-bold text-[#4A4543] whitespace-nowrap">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
+            <td class="p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
           </tr>`;
+      });
+
+      calculateTotals();
+    };
+
+    // 計算小計與底部總金額
+    window.calculateTotals = function() {
+      const localTotalEl = document.getElementById("procurement-local-total");
+      const twdTotalEl = document.getElementById("procurement-twd-total");
+      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
+      const currencyRate = parseFloat(document.getElementById("currency-rate")?.value) || 0.21;
+
+      let grandLocalTotal = 0;
+
+      Object.keys(localPrices).forEach(k => {
+        const price = parseFloat(localPrices[k]) || 0;
+        const qtyEl = document.getElementById(`qty-${k}`);
+        if (qtyEl) {
+          const qty = parseInt(qtyEl.innerText) || 0;
+          grandLocalTotal += price * qty;
+        }
       });
 
       if (localTotalEl) localTotalEl.innerText = `${currencySymbol} ${grandLocalTotal.toLocaleString()}`;
@@ -314,8 +333,20 @@
       }
     };
 
-    window.updateLocalPrice = function(key, val) {
-      set(ref(db, `procurement_local_prices/${key}`), val === "" ? null : parseFloat(val));
+    // 輸入時即時更新畫面與寫入資料庫
+    window.updateLocalPrice = function(key, val, qty) {
+      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
+      const numericVal = val === "" ? 0 : (parseFloat(val) || 0);
+      
+      localPrices[key] = val === "" ? null : numericVal;
+      
+      const subtotalEl = document.getElementById(`subtotal-${key}`);
+      if (subtotalEl) {
+        subtotalEl.innerText = `${currencySymbol} ${(numericVal * qty).toLocaleString()}`;
+      }
+      
+      calculateTotals();
+      set(ref(db, `procurement_local_prices/${key}`), val === "" ? null : numericVal);
     };
 
     function renderQueue() {
@@ -563,7 +594,7 @@
       document.getElementById("edit-id").value = id;
       document.getElementById("p-name").value = item.name;
       document.getElementById("p-spec").value = item.spec || "";
-      document.getElementById("p-price").value = item.price;
+      document.getElementById("p-[#price]").value = item.price;
       document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
       document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
       document.getElementById("submit-btn").innerText = "確認修改";
