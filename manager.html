@@ -218,6 +218,10 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
+    window.db = db;
+    window.ref = ref;
+    window.set = set;
+
     let catalog = {}, orders = [], checkedStatus = {}, localPrices = {};
     let draggedItemId = null;
     let draggedOrderId = null;
@@ -250,7 +254,10 @@
         renderAll();
       });
       onValue(ref(db, "procurement_status"), s => { checkedStatus = s.val() || {}; renderProcurement(); });
-      onValue(ref(db, "procurement_local_prices"), s => { localPrices = s.val() || {}; renderProcurement(); });
+      onValue(ref(db, "procurement_local_prices"), s => { 
+        localPrices = s.val() || {}; 
+        renderProcurement(); 
+      });
     }
 
     window.switchTab = function(tab) {
@@ -295,7 +302,8 @@
 
       Object.keys(map).forEach(k => {
         const item = map[k], checked = checkedStatus[k] || false;
-        const currentLocalPrice = localPrices[k] !== undefined && localPrices[k] !== null ? localPrices[k] : "";
+        const savedVal = localPrices[k];
+        const currentLocalPrice = (savedVal !== undefined && savedVal !== null) ? savedVal : "";
         const numericPrice = parseFloat(currentLocalPrice) || 0;
         const subtotalLocal = numericPrice * item.totalQty;
 
@@ -346,9 +354,10 @@
       }
     };
 
+    let priceSaveTimer = {};
     window.updateLocalPrice = function(key, val, qty) {
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
-      const numericVal = val === "" ? null : parseFloat(val);
+      const numericVal = (val === "" || val === null || val === undefined) ? null : parseFloat(val);
       
       localPrices[key] = numericVal;
       
@@ -359,7 +368,11 @@
       }
       
       calculateTotals();
-      set(ref(db, `procurement_local_prices/${key}`), numericVal);
+
+      if (priceSaveTimer[key]) clearTimeout(priceSaveTimer[key]);
+      priceSaveTimer[key] = setTimeout(() => {
+        set(ref(db, `procurement_local_prices/${key}`), numericVal);
+      }, 300);
     };
 
     function getPlatformBadge(platform) {
