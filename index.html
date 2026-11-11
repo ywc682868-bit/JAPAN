@@ -17,7 +17,6 @@
 </head>
 <body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-12">
 
-  <!-- Header -->
   <header class="bg-[#F8F6F4] border-b border-[#D5D0CC] shadow-sm sticky top-0 z-50">
     <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
       <div class="flex items-center gap-3">
@@ -38,7 +37,6 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- 商品目錄 (左 2 欄) -->
       <div class="lg:col-span-2 space-y-4">
         <h2 class="text-xl font-bold text-[#4A4543] flex items-center gap-2">
           <i class="fa-solid fa-gift text-[#B08889]"></i> 商品目錄
@@ -46,7 +44,6 @@
         <div id="customer-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
       </div>
 
-      <!-- 購物車與填單 (右 1 欄) -->
       <div class="lg:col-span-1">
         <div class="bg-[#F8F6F4] rounded-3xl shadow-sm border border-[#D5D0CC] p-5 sticky top-24 space-y-4">
           <h3 class="text-lg font-bold text-[#4A4543] border-b border-[#EFECE9] pb-3 flex justify-between items-center">
@@ -120,7 +117,7 @@
         card.className = "bg-[#F8F6F4] p-4 rounded-2xl border border-[#D5D0CC] shadow-sm flex flex-col justify-between";
         card.innerHTML = `
           <div>
-            ${item.image ? `<img src="${item.image}" class="w-full h-36 object-cover rounded-xl mb-3 border border-[#EFECE9]" onerror="this.style.display='none'">` : '<div class="w-full h-36 bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>'}
+            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1"><img src="${item.image}" class="w-full h-full object-contain rounded-lg" onerror="this.parentElement.style.display='none'"></div>` : '<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>'}
             <div class="flex justify-between items-start gap-2">
               <h4 class="font-bold text-[#4A4543] text-sm">${item.name}</h4>
               <span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec || '單一規格'}</span>
