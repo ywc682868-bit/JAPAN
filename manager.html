@@ -64,7 +64,7 @@
 
     <!-- 1. 採購總統計表 -->
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-4">
-      <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-list-check text-[#B08889]"></i>自動加總採購清單</h3>
+      <h3 class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單</h3>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
           <thead>
@@ -106,7 +106,7 @@
     <!-- 3. 商品定價與縮圖管理 -->
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-6 space-y-6">
       <div class="border border-[#D5D0CC] p-5 rounded-2xl bg-[#FAF9F7] space-y-4">
-        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品（自動轉 1:1 正方形圖）</h3>
+        <h3 id="form-title" class="font-bold text-[#4A4543] text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
         <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:ring-2 focus:ring-[#B08889] focus:outline-none">
