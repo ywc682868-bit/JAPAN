@@ -350,7 +350,10 @@
         const priceBadges = prices.map(p => {
           const count = item.priceBreakdown[p];
           const isMultiple = prices.length > 1;
-          return `<span class="inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${isMultiple ? 'bg-[#B08889] bg-opacity-15 text-[#B08889] border border-[#B08889] border-opacity-30' : 'bg-[#EFECE9] text-[#7A726E]'}">NT$${p} ×${count}</span>`;
+          const badgeStyle = isMultiple 
+            ? "background-color: rgba(176, 136, 137, 0.18); color: #6B4B4C; border: 1px solid rgba(176, 136, 137, 0.45);" 
+            : "background-color: #EFECE9; color: #7A726E;";
+          return `<span style="${badgeStyle}" class="inline-block px-2 py-0.5 rounded text-xs font-semibold">NT$${p} ×${count}</span>`;
         }).join(" ");
 
         const tr = document.createElement("tr");
