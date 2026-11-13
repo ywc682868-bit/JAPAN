@@ -342,7 +342,6 @@
       return orders.map(o => {
         let originalTotal = 0;
         let allocatedTotal = 0;
-        let hasAnyLimit = false;
 
         const allocatedItems = (o.items || []).map(i => {
           const key = getItemKey(i.name, i.spec);
@@ -355,7 +354,6 @@
 
           if (hasLimit[key]) {
             isTracked = true;
-            hasAnyLimit = true;
             const avail = remainingPool[key] || 0;
             allocQty = Math.min(reqQty, avail);
             remainingPool[key] = Math.max(0, avail - allocQty);
@@ -377,7 +375,7 @@
           allocatedItems,
           originalTotal: Number(o.totalAmount ?? originalTotal),
           allocatedTotal,
-          hasAnyLimit
+          hasAnyLimit: Object.keys(hasLimit).length > 0
         };
       });
     }
@@ -442,14 +440,14 @@
         const effectiveQty = getEffectiveQty(k, item.totalQty);
         const subtotalLocal = numericPrice * effectiveQty;
 
-        // 狀態顏色判斷
-        let purchasedInputStyle = "border-[#D5D0CC] text-[#4A4543]";
+        // 狀態顏色判斷（改用純內嵌樣式，避免被 Tailwind 的 !important 覆蓋導致字體與背景同色）
+        let purchasedInputStyle = "background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;";
         if (currentPurchasedStr !== "") {
           const pNum = Number(currentPurchasedStr);
           if (pNum >= item.totalQty) {
-            purchasedInputStyle = "border-[#8F9E93] text-[#4E5C53] bg-[#8F9E93] bg-opacity-10";
+            purchasedInputStyle = "background-color: rgba(143, 158, 147, 0.18); border: 1px solid #8F9E93; color: #4E5C53;";
           } else {
-            purchasedInputStyle = "border-[#B08889] text-[#B08889] bg-[#B08889] bg-opacity-10";
+            purchasedInputStyle = "background-color: rgba(176, 136, 137, 0.18); border: 1px solid #B08889; color: #6B4B4C;";
           }
         }
 
@@ -502,7 +500,8 @@
               onfocus="activePurchasedKey='${k}'" 
               onblur="onPurchasedBlur('${k}', this.value, ${item.totalQty})" 
               oninput="updatePurchasedQty('${k}', this.value, ${item.totalQty})" 
-              class="w-24 sm:w-24 p-1 bg-white border rounded-lg text-right text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#8F9E93] ${purchasedInputStyle}">
+              style="${purchasedInputStyle}"
+              class="w-24 sm:w-24 p-1 rounded-lg text-right text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#8F9E93]">
           </td>
           <td class="p-2 sm:p-3 text-right">
             <input type="number" id="input-price-${k}" placeholder="輸入單價" value="${currentLocalPrice}" 
@@ -575,13 +574,12 @@
 
       const inputEl = document.getElementById(`input-purchased-${key}`);
       if (inputEl) {
-        inputEl.classList.remove("border-[#D5D0CC]", "text-[#4A4543]", "border-[#8F9E93]", "text-[#4E5C53]", "bg-[#8F9E93]", "border-[#B08889]", "text-[#B08889]", "bg-[#B08889]", "bg-opacity-10");
         if (numericVal === null) {
-          inputEl.classList.add("border-[#D5D0CC]", "text-[#4A4543]");
+          inputEl.style.cssText = "background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;";
         } else if (numericVal >= totalDemandQty) {
-          inputEl.classList.add("border-[#8F9E93]", "text-[#4E5C53]", "bg-[#8F9E93]", "bg-opacity-10");
+          inputEl.style.cssText = "background-color: rgba(143, 158, 147, 0.18); border: 1px solid #8F9E93; color: #4E5C53;";
         } else {
-          inputEl.classList.add("border-[#B08889]", "text-[#B08889]", "bg-[#B08889]", "bg-opacity-10");
+          inputEl.style.cssText = "background-color: rgba(176, 136, 137, 0.18); border: 1px solid #B08889; color: #6B4B4C;";
         }
       }
 
