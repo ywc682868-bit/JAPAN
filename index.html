@@ -185,9 +185,13 @@
     onValue(ref(db, "catalog"), (snapshot) => {
       catalogProducts = snapshot.val() || {};
       
+      // 檢查購物車內商品是否完售或超過庫存
       Object.keys(currentCart).forEach(id => {
-        if (catalogProducts[id]?.isOutOfStock) {
+        const item = catalogProducts[id];
+        if (!item || item.isOutOfStock || (item.stock !== undefined && item.stock !== null && item.stock <= 0)) {
           delete currentCart[id];
+        } else if (item.stock !== undefined && item.stock !== null && currentCart[id] > item.stock) {
+          currentCart[id] = item.stock; // 若購物車數量大於庫存，自動修正為最大庫存量
         }
       });
 
@@ -263,19 +267,23 @@
         }
 
         const qty = currentCart[id] || 0;
-        const isOutOfStock = item.isOutOfStock || false;
+        
+        // 判斷是否完售（手動設為完售 OR 庫存設定小於等於0）
+        const hasStockLimit = item.stock !== undefined && item.stock !== null;
+        const isOutOfStock = item.isOutOfStock || (hasStockLimit && item.stock <= 0);
 
         const card = document.createElement("div");
         card.className = `bg-[#F8F6F4] p-3.5 sm:p-4 rounded-2xl border border-[#D5D0CC] shadow-sm flex flex-col justify-between transition-all ${isOutOfStock ? 'opacity-60 bg-gray-100 border-gray-300' : ''}`;
         
         const specTag = item.spec && item.spec.trim() !== '' ? `<span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec}</span>` : '';
+        const stockBadgeText = isOutOfStock ? '已完售' : (hasStockLimit ? `剩餘 ${item.stock}` : '供應中');
 
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-center mb-2">
               <span class="text-[11px] font-bold px-2 py-0.5 bg-[#EFECE9] text-[#7A726E] rounded-md">${itemCategory}</span>
               <span class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
-                ${isOutOfStock ? '已完售' : '供應中'}
+                ${stockBadgeText}
               </span>
             </div>
             <div class="relative w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1">
@@ -302,10 +310,23 @@
     }
 
     window.updateCart = function(id, change) {
-      if (catalogProducts[id]?.isOutOfStock) return;
-      const next = (currentCart[id] || 0) + change;
+      const item = catalogProducts[id];
+      if (!item) return;
+      const hasStockLimit = item.stock !== undefined && item.stock !== null;
+      if (item.isOutOfStock || (hasStockLimit && item.stock <= 0)) return;
+
+      const currentQty = currentCart[id] || 0;
+      const next = currentQty + change;
+
+      // 若有庫存限制，檢查是否超過庫存
+      if (change > 0 && hasStockLimit && next > item.stock) {
+        alert(`此商品目前庫存僅剩 ${item.stock} 件`);
+        return;
+      }
+
       if (next <= 0) delete currentCart[id];
       else currentCart[id] = next;
+      
       renderCatalog();
       renderCart();
     };
