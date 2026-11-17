@@ -31,6 +31,10 @@
     .border-\[\#D5D0CC\] { border-color: #D5D0CC !important; }
     .border-\[\#EFECE9\] { border-color: #EFECE9 !important; }
 
+    /* 手機模式滾動優化 */
+    .scrollbar-none::-webkit-scrollbar { display: none; }
+    .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
     html { scroll-behavior: smooth; }
   </style>
 
@@ -63,9 +67,9 @@
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6">
+  <main class="max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6 space-y-4">
     <!-- 喊單須知公告區塊 -->
-    <div class="mb-4 sm:mb-6 p-4 sm:p-5 bg-[#F8F6F4] rounded-2xl border-l-4 border-[#B08889] shadow-sm text-xs sm:text-sm text-[#4A4543] space-y-2">
+    <div class="p-4 sm:p-5 bg-[#F8F6F4] rounded-2xl border-l-4 border-[#B08889] shadow-sm text-xs sm:text-sm text-[#4A4543] space-y-2">
       <div class="flex items-center gap-2 font-bold text-[#B08889] text-sm sm:text-base">
         <i class="fa-solid fa-triangle-exclamation"></i>
         <span>喊單須知與購物說明</span>
@@ -81,8 +85,13 @@
       </div>
     </div>
 
-    <div id="connection-status" class="mb-4 sm:mb-6 p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center" style="background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);">
+    <div id="connection-status" class="p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center" style="background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);">
       <i class="fa-solid fa-spinner fa-spin mr-2"></i> 連線資料庫中...
+    </div>
+
+    <!-- 客戶分類篩選列 -->
+    <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1" id="client-category-filters">
+      <!-- 動態載入分類按鈕 -->
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -123,7 +132,7 @@
               <span id="cart-total-price" class="text-lg sm:text-xl text-[#B08889]">NT$ 0</span>
             </div>
             <button type="submit" id="btn-submit-order" disabled class="w-full py-3 bg-[#B08889] text-white font-bold rounded-xl shadow-sm transition-all text-sm opacity-40">
-              確認送出訂單
+              確認喊單排隊
             </button>
           </form>
         </div>
@@ -155,6 +164,7 @@
     const db = getDatabase(initializeApp(firebaseConfig));
     let catalogProducts = {};
     let currentCart = {};
+    let currentCategoryFilter = "全部";
 
     document.addEventListener("DOMContentLoaded", () => {
       updatePlatformStyle();
@@ -169,12 +179,13 @@
         }
       });
 
+      renderCategories();
       renderCatalog();
       renderCart();
       updatePlatformStyle();
 
       const statusEl = document.getElementById("connection-status");
-      statusEl.className = "mb-4 sm:mb-6 p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center";
+      statusEl.className = "p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center";
       statusEl.style.cssText = "background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);";
       statusEl.innerHTML = `<i class="fa-solid fa-wifi mr-2"></i> 已連線至資料庫`;
     });
@@ -187,15 +198,42 @@
       select.style.color = "#FFFFFF";
 
       if (val === "Threads") {
-        select.style.backgroundColor = "#3A3837"; // 莫蘭迪深黑
+        select.style.backgroundColor = "#3A3837";
       } else if (val === "IG") {
-        select.style.backgroundColor = "#B08889"; // 莫蘭迪乾燥玫瑰紅
+        select.style.backgroundColor = "#B08889";
       } else if (val === "FB") {
-        select.style.backgroundColor = "#6C7D8E"; // 莫蘭迪灰藍
+        select.style.backgroundColor = "#6C7D8E";
       } else {
-        select.style.backgroundColor = "#8F9E93"; // 莫蘭迪鼠尾草綠 (LINE)
+        select.style.backgroundColor = "#8F9E93";
       }
     };
+
+    window.filterClientCategory = function(cat) {
+      currentCategoryFilter = cat;
+      renderCategories();
+      renderCatalog();
+    };
+
+    function renderCategories() {
+      const container = document.getElementById("client-category-filters");
+      if (!container) return;
+
+      const categories = new Set(["全部"]);
+      Object.values(catalogProducts).forEach(item => {
+        if (item.category) categories.add(item.category.trim());
+      });
+
+      container.innerHTML = "";
+      categories.forEach(cat => {
+        const isActive = currentCategoryFilter === cat;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.innerText = cat;
+        btn.onclick = () => filterClientCategory(cat);
+        btn.className = `px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${isActive ? 'bg-[#B08889] text-white shadow-sm' : 'bg-[#F8F6F4] text-[#7A726E] border border-[#D5D0CC] hover:bg-white'}`;
+        container.appendChild(btn);
+      });
+    }
 
     function renderCatalog() {
       const grid = document.getElementById("customer-product-grid");
@@ -207,6 +245,11 @@
 
       sortedIds.forEach(id => {
         const item = catalogProducts[id];
+        const itemCategory = (item.category || '未分類').trim();
+        if (currentCategoryFilter !== "全部" && itemCategory !== currentCategoryFilter) {
+          return;
+        }
+
         const qty = currentCart[id] || 0;
         const isOutOfStock = item.isOutOfStock || false;
 
@@ -217,8 +260,14 @@
 
         card.innerHTML = `
           <div>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-[11px] font-bold px-2 py-0.5 bg-[#EFECE9] text-[#7A726E] rounded-md">${itemCategory}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+                ${isOutOfStock ? '已完售' : '供應中'}
+              </span>
+            </div>
             <div class="relative w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1">
-              ${isOutOfStock ? `<div class="absolute inset-0 bg-gray-900 bg-opacity-40 z-10 flex items-center justify-center"><span class="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md tracking-wider">無庫存 / 停止喊單</span></div>` : ''}
+              ${isOutOfStock ? `<div class="absolute inset-0 bg-gray-900 bg-opacity-40 z-10 flex items-center justify-center"><span class="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md tracking-wider">已完售</span></div>` : ''}
               ${item.image ? `<img src="${item.image}" class="w-full h-full object-contain rounded-lg ${isOutOfStock ? 'filter grayscale' : ''}" onerror="this.parentElement.style.display='none'">` : `<div class="w-full h-full flex items-center justify-center text-xs text-[#A39E9A] ${isOutOfStock ? 'filter grayscale' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
             </div>
             <div class="flex justify-between items-start gap-2">
@@ -249,6 +298,16 @@
       renderCart();
     };
 
+    function hasCookieOrder() {
+      for (const id in currentCart) {
+        const item = catalogProducts[id];
+        if (item && item.category && item.category.trim() === "餅乾訂購") {
+          return true;
+        }
+      }
+      return false;
+    }
+
     function renderCart() {
       const cartList = document.getElementById("cart-items-list");
       const totalEl = document.getElementById("cart-total-price");
@@ -263,6 +322,7 @@
         totalEl.innerText = "NT$ 0";
         submitBtn.disabled = true;
         submitBtn.classList.add("opacity-40");
+        submitBtn.innerText = "確認喊單排隊";
         document.getElementById("cart-item-count").innerText = `0 件`;
         if (floatingCountEl) floatingCountEl.innerText = "0";
         return;
@@ -274,7 +334,8 @@
         total += item.price * qty;
         count += qty;
         const specText = item.spec && item.spec.trim() !== '' ? `${item.spec} ` : '';
-        cartList.innerHTML += `<div class="py-2.5 flex justify-between text-sm"><div><p class="font-medium text-[#4A4543]">${item.name}</p><p class="text-xs text-[#A39E9A]">${specText}x ${qty}</p></div><span class="font-bold text-[#4A4543]">NT$ ${item.price * qty}</span></div>`;
+        const catBadge = item.category ? `<span class="text-[10px] text-[#B08889] bg-[#EFECE9] px-1.5 py-0.5 rounded mr-1">${item.category}</span>` : '';
+        cartList.innerHTML += `<div class="py-2.5 flex justify-between text-sm"><div><p class="font-medium text-[#4A4543]">${catBadge}${item.name}</p><p class="text-xs text-[#A39E9A]">${specText}x ${qty}</p></div><span class="font-bold text-[#4A4543]">NT$ ${item.price * qty}</span></div>`;
       });
 
       totalEl.innerText = `NT$ ${total}`;
@@ -283,12 +344,20 @@
 
       submitBtn.disabled = false;
       submitBtn.classList.remove("opacity-40");
+
+      // 如果購物車包含「餅乾訂購」分類，按鈕文字切換為 LINE 結單
+      if (hasCookieOrder()) {
+        submitBtn.innerText = "確認喊單並聯繫官方 LINE 回覆";
+      } else {
+        submitBtn.innerText = "確認喊單排隊";
+      }
     }
 
     window.submitCustomerOrder = function(e) {
       e.preventDefault();
       const name = document.getElementById("cust-name").value.trim();
-      if (!name) return alert("請填寫暱稱");
+      const platform = document.getElementById("cust-platform").value;
+      if (!name) return alert("請填寫買家暱稱 / ID");
 
       const items = Object.keys(currentCart).map(id => ({
         name: catalogProducts[id].name,
@@ -297,18 +366,47 @@
         qty: currentCart[id]
       }));
 
+      const totalAmount = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+
+      // 無論哪種商品皆同步備份訂單至後台資料庫
       set(push(ref(db, "orders")), {
-        platform: document.getElementById("cust-platform").value,
+        platform: platform,
         customerName: name,
         items,
-        totalAmount: items.reduce((sum, i) => sum + i.price * i.qty, 0),
+        totalAmount,
         timestamp: Date.now(),
         createdAtStr: new Date().toLocaleString("zh-TW")
       }).then(() => {
-        alert("訂單已送出！");
-        currentCart = {};
-        renderCatalog();
-        renderCart();
+        if (hasCookieOrder()) {
+          // 若包含餅乾訂購，組合明細並跳轉至官方 LINE
+          let textMsg = `【奶油雜貨店 餅乾喊單明細】\n`;
+          textMsg += `平台：${platform}\n`;
+          textMsg += `買家：${name}\n`;
+          textMsg += `--------------------\n`;
+          items.forEach(i => {
+            const s = i.spec ? `(${i.spec})` : '';
+            textMsg += `${i.name} ${s} x ${i.qty} ($${i.price * i.qty})\n`;
+          });
+          textMsg += `--------------------\n`;
+          textMsg += `總金額：NT$ ${totalAmount}\n`;
+          textMsg += `再麻煩闆娘幫我登記結單，謝謝！`;
+
+          navigator.clipboard.writeText(textMsg).then(() => {
+            alert("訂單已送出並複製明細！即將前往官方 LINE，請在對話框中「貼上」傳送給闆娘即可。");
+            window.location.href = "https://lin.ee/7sBv1xFJ";
+          }).catch(() => {
+            alert("訂單已送出！即將前往官方 LINE。");
+            window.location.href = "https://lin.ee/7sBv1xFJ";
+          });
+        } else {
+          // 一般連線商品維持原本的排隊通知
+          alert("喊單排隊成功！有買到後闆娘會通知您。");
+          currentCart = {};
+          renderCatalog();
+          renderCart();
+        }
+      }).catch(err => {
+        alert("送出失敗：" + err.message);
       });
     };
   </script>
