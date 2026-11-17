@@ -31,7 +31,6 @@
     .border-\[\#D5D0CC\] { border-color: #D5D0CC !important; }
     .border-\[\#EFECE9\] { border-color: #EFECE9 !important; }
 
-    /* 手機模式滾動優化 */
     .scrollbar-none::-webkit-scrollbar { display: none; }
     .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -90,9 +89,7 @@
     </div>
 
     <!-- 客戶分類篩選列 -->
-    <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1" id="client-category-filters">
-      <!-- 動態載入分類按鈕 -->
-    </div>
+    <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1" id="client-category-filters"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
       <!-- 商品列表 -->
@@ -114,7 +111,6 @@
             <p class="text-[#A39E9A] text-center py-6 text-xs">尚未選擇商品</p>
           </div>
           <form onsubmit="submitCustomerOrder(event)" class="space-y-3.5 pt-3 border-t border-[#EFECE9]">
-            <!-- 平台選單：一般商品顯示，餅乾類商品自動隱藏 -->
             <div id="platform-container">
               <label class="block text-xs font-semibold text-[#7A726E] mb-1">喊單平台</label>
               <select id="cust-platform" onchange="updatePlatformStyle()" class="w-full text-sm p-2.5 rounded-xl focus:outline-none font-bold transition-all border border-[#D5D0CC]">
@@ -128,7 +124,6 @@
               <label class="block text-xs font-semibold text-[#7A726E] mb-1">收件人 <span class="text-red-500">*</span></label>
               <input type="text" id="cust-name" required placeholder="請輸入真實姓名" class="w-full text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none">
             </div>
-            <!-- 餅乾類專用聯絡資訊欄位 -->
             <div id="cookie-fields" class="space-y-3.5 hidden">
               <div>
                 <label class="block text-xs font-semibold text-[#7A726E] mb-1">聯繫電話 <span class="text-red-500">*</span></label>
@@ -152,7 +147,6 @@
     </div>
   </main>
 
-  <!-- 手機版右下角浮動送單按鈕 -->
   <a href="#order-section" id="mobile-floating-btn" class="lg:hidden fixed bottom-5 right-4 z-50 bg-[#B08889] text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all active:scale-95 border-2 border-white">
     <i class="fa-solid fa-cart-shopping text-base"></i>
     <span class="font-bold text-xs">喊單</span>
@@ -178,7 +172,6 @@
     let currentCart = {};
     let currentCategoryFilter = "全部";
 
-    // 取得商品有效庫存：沒填、null、undefined 或空字串一律視同 0（無現貨）
     function getAvailableStock(item) {
       if (!item || item.stock === undefined || item.stock === null || item.stock === "") {
         return 0;
@@ -193,7 +186,6 @@
     onValue(ref(db, "catalog"), (snapshot) => {
       catalogProducts = snapshot.val() || {};
       
-      // 檢查購物車內商品是否完售或超過庫存（沒填視同 0）
       Object.keys(currentCart).forEach(id => {
         const item = catalogProducts[id];
         const availableStock = getAvailableStock(item);
@@ -277,8 +269,6 @@
 
         const qty = currentCart[id] || 0;
         const availableStock = getAvailableStock(item);
-        
-        // 沒填庫存、庫存 <= 0 或手動設為完售，一律視為無現貨（灰色不可點選）
         const isOutOfStock = item.isOutOfStock || availableStock <= 0;
 
         const card = document.createElement("div");
@@ -422,7 +412,9 @@
         return alert("請填寫完整的聯繫電話與收件地址！");
       }
 
+      // 下單時一併記錄 productId，確保日後修改商品名稱、規格或價錢時仍能正確對應同一商品
       const items = Object.keys(currentCart).map(id => ({
+        productId: id,
         name: catalogProducts[id].name,
         spec: catalogProducts[id].spec || "",
         price: catalogProducts[id].price,
