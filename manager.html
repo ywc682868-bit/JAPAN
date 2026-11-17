@@ -97,10 +97,10 @@
           <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
             <i class="fa-solid fa-list-check text-[#B08889]"></i>採購與現貨庫存清單
           </h3>
-          <p class="text-[11px] text-[#7A726E] mt-0.5">現貨庫存若未填或為 0，前台將直接視同無現貨（已完售）；可上下拖曳調整品項順序。</p>
+          <p class="text-[11px] text-[#7A726E] mt-0.5">現貨庫存若未填或為 0，前台將直接視同無現貨（已完售）；餅乾類為純台幣計價且不需採購。</p>
         </div>
         
-        <div class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
+        <div id="currency-settings-box" class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
           <div class="flex items-center gap-1">
             <span class="text-[#7A726E] font-medium">貨幣：</span>
             <input type="text" id="currency-symbol" value="JP¥" oninput="renderProcurement()" class="w-12 sm:w-14 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
@@ -123,25 +123,25 @@
           <thead>
             <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
               <th class="p-2 sm:p-3 w-8 text-center"></th>
-              <th class="p-2 sm:p-3 w-10 text-center">已購</th>
+              <th class="p-2 sm:p-3 w-10 text-center">確認</th>
               <th class="p-2 sm:p-3">商品名稱 / 類別</th>
               <th class="p-2 sm:p-3">規格 / 金額</th>
               <th class="p-2 sm:p-3 text-right whitespace-nowrap">需求總數</th>
               <th class="p-2 sm:p-3 text-right whitespace-nowrap">現貨庫存</th>
-              <th class="p-2 sm:p-3 text-right whitespace-nowrap">已採購數</th>
-              <th class="p-2 sm:p-3 text-right whitespace-nowrap">單價 (<span class="header-curr-label">JP¥</span>)</th>
-              <th class="p-2 sm:p-3 text-right rounded-r-xl whitespace-nowrap">小計 (<span class="header-curr-label">JP¥</span>)</th>
+              <th id="th-purchased-col" class="p-2 sm:p-3 text-right whitespace-nowrap">已採購數</th>
+              <th id="th-unit-price-col" class="p-2 sm:p-3 text-right whitespace-nowrap">單價 (<span class="header-curr-label">JP¥</span>)</th>
+              <th id="th-subtotal-col" class="p-2 sm:p-3 text-right rounded-r-xl whitespace-nowrap">小計 (<span class="header-curr-label">JP¥</span>)</th>
             </tr>
           </thead>
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
-            <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="8" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額：</td>
+            <tr id="tfoot-foreign-row" class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
+              <td id="tfoot-foreign-colspan" colspan="8" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">外幣採購總計金額：</td>
               <td id="procurement-local-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">JP¥ 0</td>
             </tr>
-            <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
-              <td colspan="8" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
-              <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-xs sm:text-sm font-black whitespace-nowrap">NT$ 0</td>
+            <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E] border-t border-[#D5D0CC]">
+              <td id="tfoot-twd-colspan" colspan="8" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">台幣總計金額 (含換算與台幣商品)：</td>
+              <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-sm sm:text-base font-black whitespace-nowrap">NT$ 0</td>
             </tr>
           </tfoot>
         </table>
@@ -244,6 +244,7 @@
     const auth = getAuth(app);
 
     let catalog = {}, orders = [], checkedStatus = {}, localPrices = {}, purchasedQtys = {}, customProcurementOrder = [];
+    let currentProcurementMap = {};
     let draggedProcurementKey = null;
     let activeInputKey = null;
     let activePurchasedKey = null;
@@ -313,6 +314,10 @@
       const cleanName = (name || '').replace(/["']/g, '').trim();
       const cleanSpec = (spec || '').trim();
       return sanitizeKey(`${cleanName}_${cleanSpec}`);
+    }
+
+    function isCookieCategory(category) {
+      return (category || "").includes("餅乾");
     }
 
     window.toggleProcurementChecked = function(key, isChecked) {
@@ -407,7 +412,10 @@
       });
     }
 
-    function getEffectiveQty(key, totalDemandQty) {
+    function getEffectiveQty(key, totalDemandQty, isCookie) {
+      // 餅乾類不需要採購，直接依照需求總數計算小計
+      if (isCookie) return totalDemandQty;
+
       const pVal = purchasedQtys[key];
       if (pVal !== undefined && pVal !== null && pVal !== "") {
         return Number(pVal) || 0;
@@ -438,6 +446,38 @@
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
       document.querySelectorAll(".header-curr-label").forEach(el => el.innerText = currencySymbol);
 
+      const isCookieFilterView = currentProcurementCategoryFilter !== "全部" && isCookieCategory(currentProcurementCategoryFilter);
+
+      // 切換表頭與外幣設定列顯示狀態
+      const currencyBox = document.getElementById("currency-settings-box");
+      const thPurchased = document.getElementById("th-purchased-col");
+      const thUnitPrice = document.getElementById("th-unit-price-col");
+      const thSubtotal = document.getElementById("th-subtotal-col");
+      const tfootForeignRow = document.getElementById("tfoot-foreign-row");
+      const tfootTwdColspan = document.getElementById("tfoot-twd-colspan");
+
+      if (isCookieFilterView) {
+        if (currencyBox) currencyBox.classList.add("hidden");
+        if (thPurchased) thPurchased.classList.add("hidden");
+        if (thUnitPrice) thUnitPrice.innerHTML = `單價 (NT$)`;
+        if (thSubtotal) thSubtotal.innerHTML = `小計 (NT$)`;
+        if (tfootForeignRow) tfootForeignRow.classList.add("hidden");
+        if (tfootTwdColspan) {
+          tfootTwdColspan.colSpan = 7;
+          tfootTwdColspan.innerText = "餅乾訂購總計金額 (NT$)：";
+        }
+      } else {
+        if (currencyBox) currencyBox.classList.remove("hidden");
+        if (thPurchased) thPurchased.classList.remove("hidden");
+        if (thUnitPrice) thUnitPrice.innerHTML = `單價 (<span class="header-curr-label">${currencySymbol}</span> / NT$)`;
+        if (thSubtotal) thSubtotal.innerHTML = `小計 (<span class="header-curr-label">${currencySymbol}</span> / NT$)`;
+        if (tfootForeignRow) tfootForeignRow.classList.remove("hidden");
+        if (tfootTwdColspan) {
+          tfootTwdColspan.colSpan = 8;
+          tfootTwdColspan.innerText = "台幣總計金額 (含外幣換算與台幣商品)：";
+        }
+      }
+
       const map = {};
       const categories = new Set(["全部"]);
 
@@ -448,10 +488,11 @@
         const regPrice = Number(i.price || 0);
         const prod = findProductByNameAndSpec(cleanName, cleanSpec);
         const category = (prod && prod.category ? prod.category.trim() : "未分類");
+        const defaultTwdPrice = prod ? Number(prod.price || regPrice) : regPrice;
         categories.add(category);
         
         if (!map[key]) {
-          map[key] = { name: cleanName, spec: cleanSpec, category, priceBreakdown: {}, totalQty: 0, key };
+          map[key] = { name: cleanName, spec: cleanSpec, category, defaultTwdPrice, priceBreakdown: {}, totalQty: 0, key };
         }
         map[key].totalQty += i.qty;
         map[key].priceBreakdown[regPrice] = (map[key].priceBreakdown[regPrice] || 0) + i.qty;
@@ -462,10 +503,11 @@
         const cleanName = (prod.name || '').replace(/["']/g, '').trim();
         const cleanSpec = (prod.spec || '').trim();
         const category = (prod.category ? prod.category.trim() : "未分類");
+        const defaultTwdPrice = Number(prod.price || 0);
         categories.add(category);
         const key = getItemKey(cleanName, cleanSpec);
         if (!map[key]) {
-          map[key] = { name: cleanName, spec: cleanSpec, category, priceBreakdown: { [prod.price || 0]: 0 }, totalQty: 0, key };
+          map[key] = { name: cleanName, spec: cleanSpec, category, defaultTwdPrice, priceBreakdown: { [defaultTwdPrice]: 0 }, totalQty: 0, key };
         }
       });
 
@@ -502,17 +544,25 @@
         }
         filteredMap[k] = item;
 
+        const isCookie = isCookieCategory(item.category);
         const checked = checkedStatus[k] || false;
-        const savedVal = localPrices[k];
-        const currentLocalPrice = (savedVal !== undefined && savedVal !== null) ? savedVal : "";
-        const numericPrice = parseFloat(currentLocalPrice) || 0;
 
+        // 餅乾類若未在表格覆寫過單價，直接預設帶入商品設定的台幣售價
+        const savedVal = localPrices[k];
+        let currentUnitPrice = "";
+        if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+          currentUnitPrice = savedVal;
+        } else if (isCookie && item.defaultTwdPrice > 0) {
+          currentUnitPrice = item.defaultTwdPrice;
+        }
+
+        const numericPrice = parseFloat(currentUnitPrice) || 0;
         const savedPurchased = purchasedQtys[k];
         const currentPurchasedStr = (savedPurchased !== undefined && savedPurchased !== null) ? savedPurchased : "";
-        const effectiveQty = getEffectiveQty(k, item.totalQty);
-        const subtotalLocal = numericPrice * effectiveQty;
+        const effectiveQty = getEffectiveQty(k, item.totalQty, isCookie);
+        const subtotal = numericPrice * effectiveQty;
 
-        // 取得對應商品的庫存值（若沒填或為 0 則顯示空字串並提示 0）
+        // 取得對應商品的庫存值（沒填或為 0 顯示空字串並提示 0）
         const prodId = findProductIdByNameAndSpec(item.name, item.spec);
         let stockValStr = "";
         if (prodId && catalog[prodId]) {
@@ -564,6 +614,23 @@
           }
         });
 
+        // 餅乾類不需要採購數欄位
+        const purchasedCellHtml = isCookieFilterView
+          ? ""
+          : (isCookie
+              ? `<td class="p-2 sm:p-3 text-right"><span class="text-xs text-[#A39E9A] font-medium px-2 py-1 bg-[#EFECE9] rounded-lg">不需採購</span></td>`
+              : `<td class="p-2 sm:p-3 text-right">
+                  <input type="number" min="0" id="input-purchased-${k}" placeholder="未填" value="${currentPurchasedStr}" 
+                    onfocus="activePurchasedKey='${k}'" 
+                    onblur="onPurchasedBlur('${k}', this.value)" 
+                    oninput="updatePurchasedQty('${k}', this.value)" 
+                    style="${purchasedInputStyle}"
+                    class="w-20 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
+                </td>`);
+
+        const unitCurrTag = isCookie ? `<span class="text-[11px] font-bold text-[#8F9E93] mr-1">NT$</span>` : "";
+        const subtotalText = isCookie ? `NT$ ${subtotal.toLocaleString()}` : `${currencySymbol} ${subtotal.toLocaleString()}`;
+
         tr.innerHTML = `
           <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm"></i></td>
           <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleProcurementChecked('${k}', this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
@@ -584,26 +651,20 @@
               style="background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;"
               class="w-24 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
           </td>
-          <td class="p-2 sm:p-3 text-right">
-            <input type="number" min="0" id="input-purchased-${k}" placeholder="未填" value="${currentPurchasedStr}" 
-              onfocus="activePurchasedKey='${k}'" 
-              onblur="onPurchasedBlur('${k}', this.value)" 
-              oninput="updatePurchasedQty('${k}', this.value)" 
-              style="${purchasedInputStyle}"
-              class="w-20 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
-          </td>
-          <td class="p-2 sm:p-3 text-right">
-            <input type="number" id="input-price-${k}" placeholder="單價" value="${currentLocalPrice}" 
+          ${purchasedCellHtml}
+          <td class="p-2 sm:p-3 text-right whitespace-nowrap">
+            ${unitCurrTag}<input type="number" id="input-price-${k}" placeholder="單價" value="${currentUnitPrice}" 
               onfocus="activeInputKey='${k}'" 
               onblur="onPriceBlur('${k}', this.value)" 
               oninput="updateLocalPrice('${k}', this.value)" 
               class="w-20 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none">
           </td>
-          <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
+          <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${subtotalText}</td>
         `;
         tbody.appendChild(tr);
       });
 
+      currentProcurementMap = filteredMap;
       calculateTotals(filteredMap);
     };
 
@@ -619,32 +680,48 @@
     }
 
     window.calculateTotals = function(map) {
+      const targetMap = map || currentProcurementMap;
       const localTotalEl = document.getElementById("procurement-local-total");
       const twdTotalEl = document.getElementById("procurement-twd-total");
       const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
       const currencyRate = parseFloat(document.getElementById("currency-rate")?.value) || 0.21;
-      let grandLocalTotal = 0;
+      
+      let grandForeignTotal = 0;
+      let grandTwdDirectTotal = 0;
 
-      if (map) {
-        Object.keys(map).forEach(k => {
-          const price = parseFloat(localPrices[k]) || 0;
-          const effQty = getEffectiveQty(k, map[k].totalQty);
-          grandLocalTotal += price * effQty;
-        });
-      } else {
-        Object.keys(localPrices).forEach(k => {
-          const price = parseFloat(localPrices[k]) || 0;
-          const qtyEl = document.getElementById(`qty-${k}`);
-          if (qtyEl) {
-            const demandQty = parseInt(qtyEl.innerText) || 0;
-            const effQty = getEffectiveQty(k, demandQty);
-            grandLocalTotal += price * effQty;
+      if (targetMap) {
+        Object.keys(targetMap).forEach(k => {
+          const item = targetMap[k];
+          const isCookie = isCookieCategory(item.category);
+          const savedVal = localPrices[k];
+          let price = 0;
+          if (savedVal !== undefined && savedVal !== null && savedVal !== "") {
+            price = parseFloat(savedVal) || 0;
+          } else if (isCookie && item.defaultTwdPrice > 0) {
+            price = item.defaultTwdPrice;
+          }
+
+          const effQty = getEffectiveQty(k, item.totalQty, isCookie);
+          const sub = price * effQty;
+
+          // 同步更新單列小計顯示
+          const subEl = document.getElementById(`subtotal-${k}`);
+          if (subEl) {
+            subEl.innerText = isCookie ? `NT$ ${sub.toLocaleString()}` : `${currencySymbol} ${sub.toLocaleString()}`;
+          }
+
+          if (isCookie) {
+            grandTwdDirectTotal += sub;
+          } else {
+            grandForeignTotal += sub;
           }
         });
       }
 
-      if (localTotalEl) localTotalEl.innerText = `${currencySymbol} ${grandLocalTotal.toLocaleString()}`;
-      if (twdTotalEl) twdTotalEl.innerText = `NT$ ${Math.round(grandLocalTotal * currencyRate).toLocaleString()}`;
+      const totalTwd = Math.round(grandForeignTotal * currencyRate) + Math.round(grandTwdDirectTotal);
+
+      if (localTotalEl) localTotalEl.innerText = `${currencySymbol} ${grandForeignTotal.toLocaleString()}`;
+      if (twdTotalEl) twdTotalEl.innerText = `NT$ ${totalTwd.toLocaleString()}`;
     };
 
     // 即時更新商品庫存（沒填一律視為 0）
@@ -874,7 +951,7 @@
           update(ref(db, `catalog/${editId}`), payload).then(() => resetForm());
         } else {
           payload.image = imageUrl || "";
-          payload.stock = 0; // 預設 0（無現貨），需到採購與庫存統計輸入數量
+          payload.stock = 0;
           payload.order = Object.keys(catalog).length;
           set(push(ref(db, "catalog")), payload).then(() => resetForm());
         }
