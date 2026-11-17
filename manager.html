@@ -85,19 +85,19 @@
 
     <!-- 標籤導覽 -->
     <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-x-auto scrollbar-none shadow-sm p-1 gap-1">
-      <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl transition-all whitespace-nowrap">採購統計</button>
+      <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl transition-all whitespace-nowrap">採購與庫存統計</button>
       <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">排隊清單</button>
-      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">商品與庫存管理</button>
+      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">商品管理</button>
     </div>
 
-    <!-- 1. 採購總統計表 -->
+    <!-- 1. 採購與庫存統計表 -->
     <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div class="flex justify-between items-center flex-wrap gap-2.5 border-b border-[#EFECE9] pb-3">
         <div>
           <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
-            <i class="fa-solid fa-list-check text-[#B08889]"></i>加總採購清單
+            <i class="fa-solid fa-list-check text-[#B08889]"></i>採購與現貨庫存清單
           </h3>
-          <p class="text-[11px] text-[#7A726E] mt-0.5">輸入「已採購數」後，系統會依「排隊清單」順序自動分配給買家。</p>
+          <p class="text-[11px] text-[#7A726E] mt-0.5">現貨庫存若未填或為 0，前台將直接視同無現貨（已完售）；可上下拖曳調整品項順序。</p>
         </div>
         
         <div class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
@@ -112,15 +112,22 @@
         </div>
       </div>
 
+      <!-- 採購統計分類篩選器 -->
+      <div class="flex items-center gap-2 flex-wrap bg-[#EFECE9] p-3 rounded-2xl">
+        <span class="text-xs font-bold text-[#7A726E]">篩選顯示分類：</span>
+        <div id="procurement-category-filters" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
       <div class="overflow-x-auto -mx-3 sm:mx-0">
-        <table class="w-full text-left text-xs sm:text-sm min-w-[700px] sm:min-w-full">
+        <table class="w-full text-left text-xs sm:text-sm min-w-[780px] sm:min-w-full">
           <thead>
             <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
               <th class="p-2 sm:p-3 w-8 text-center"></th>
               <th class="p-2 sm:p-3 w-10 text-center">已購</th>
-              <th class="p-2 sm:p-3">商品名稱</th>
+              <th class="p-2 sm:p-3">商品名稱 / 類別</th>
               <th class="p-2 sm:p-3">規格 / 金額</th>
               <th class="p-2 sm:p-3 text-right whitespace-nowrap">需求總數</th>
+              <th class="p-2 sm:p-3 text-right whitespace-nowrap">現貨庫存</th>
               <th class="p-2 sm:p-3 text-right whitespace-nowrap">已採購數</th>
               <th class="p-2 sm:p-3 text-right whitespace-nowrap">單價 (<span class="header-curr-label">JP¥</span>)</th>
               <th class="p-2 sm:p-3 text-right rounded-r-xl whitespace-nowrap">小計 (<span class="header-curr-label">JP¥</span>)</th>
@@ -129,11 +136,11 @@
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="7" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額：</td>
+              <td colspan="8" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額：</td>
               <td id="procurement-local-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">JP¥ 0</td>
             </tr>
             <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
-              <td colspan="7" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
+              <td colspan="8" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
               <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-xs sm:text-sm font-black whitespace-nowrap">NT$ 0</td>
             </tr>
           </tfoot>
@@ -178,18 +185,16 @@
       </div>
     </div>
 
-    <!-- 3. 商品與庫存管理 -->
+    <!-- 3. 商品管理 -->
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div class="border border-[#D5D0CC] p-4 sm:p-5 rounded-2xl bg-[#FAF9F7] space-y-3 sm:space-y-4">
         <h3 id="form-title" class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
         
-        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3 items-center">
+        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-center">
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="text" id="p-spec" placeholder="規格/顏色" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="number" id="p-price" required placeholder="售價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-          <!-- 新增庫存數量欄位 -->
-          <input type="number" id="p-stock" placeholder="庫存量(留空不限)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="text" id="p-category" required list="category-list" placeholder="分類名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <datalist id="category-list">
             <option value="聖誕節餅乾">
@@ -239,12 +244,12 @@
     const auth = getAuth(app);
 
     let catalog = {}, orders = [], checkedStatus = {}, localPrices = {}, purchasedQtys = {}, customProcurementOrder = [];
-    let draggedItemId = null;
-    let draggedOrderId = null;
     let draggedProcurementKey = null;
     let activeInputKey = null;
     let activePurchasedKey = null;
+    let activeStockKey = null;
     let currentAdminCategoryFilter = "全部";
+    let currentProcurementCategoryFilter = "全部";
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -334,6 +339,21 @@
       }
     };
 
+    function findProductByNameAndSpec(name, spec) {
+      for (const id in catalog) {
+        const item = catalog[id];
+        if (item.name.trim() === name.trim() && (item.spec || "").trim() === (spec || "").trim()) {
+          return { id, ...item };
+        }
+      }
+      return null;
+    }
+
+    function findProductIdByNameAndSpec(name, spec) {
+      const found = findProductByNameAndSpec(name, spec);
+      return found ? found.id : null;
+    }
+
     function computeOrderAllocations() {
       const remainingPool = {};
       const hasLimit = {};
@@ -395,13 +415,20 @@
       return totalDemandQty;
     }
 
+    window.filterProcurementCategory = function(cat) {
+      currentProcurementCategoryFilter = cat;
+      renderProcurement();
+    };
+
     window.renderProcurement = function() {
       const tbody = document.getElementById("procurement-tbody");
+      const filterContainer = document.getElementById("procurement-category-filters");
       if (!tbody) return;
 
       if (
         (activeInputKey && document.getElementById(`input-price-${activeInputKey}`) === document.activeElement) ||
-        (activePurchasedKey && document.getElementById(`input-purchased-${activePurchasedKey}`) === document.activeElement)
+        (activePurchasedKey && document.getElementById(`input-purchased-${activePurchasedKey}`) === document.activeElement) ||
+        (activeStockKey && document.getElementById(`input-stock-${activeStockKey}`) === document.activeElement)
       ) {
         return;
       }
@@ -412,18 +439,48 @@
       document.querySelectorAll(".header-curr-label").forEach(el => el.innerText = currencySymbol);
 
       const map = {};
+      const categories = new Set(["全部"]);
+
       orders.forEach(o => (o.items || []).forEach(i => {
         const cleanName = (i.name || '').replace(/["']/g, '').trim();
         const cleanSpec = (i.spec || '').trim();
         const key = getItemKey(cleanName, cleanSpec);
         const regPrice = Number(i.price || 0);
+        const prod = findProductByNameAndSpec(cleanName, cleanSpec);
+        const category = (prod && prod.category ? prod.category.trim() : "未分類");
+        categories.add(category);
         
         if (!map[key]) {
-          map[key] = { name: cleanName, spec: cleanSpec, priceBreakdown: {}, totalQty: 0, key };
+          map[key] = { name: cleanName, spec: cleanSpec, category, priceBreakdown: {}, totalQty: 0, key };
         }
         map[key].totalQty += i.qty;
         map[key].priceBreakdown[regPrice] = (map[key].priceBreakdown[regPrice] || 0) + i.qty;
       }));
+
+      Object.keys(catalog).forEach(prodId => {
+        const prod = catalog[prodId];
+        const cleanName = (prod.name || '').replace(/["']/g, '').trim();
+        const cleanSpec = (prod.spec || '').trim();
+        const category = (prod.category ? prod.category.trim() : "未分類");
+        categories.add(category);
+        const key = getItemKey(cleanName, cleanSpec);
+        if (!map[key]) {
+          map[key] = { name: cleanName, spec: cleanSpec, category, priceBreakdown: { [prod.price || 0]: 0 }, totalQty: 0, key };
+        }
+      });
+
+      if (filterContainer) {
+        filterContainer.innerHTML = "";
+        categories.forEach(cat => {
+          const isActive = currentProcurementCategoryFilter === cat;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.innerText = cat;
+          btn.onclick = () => filterProcurementCategory(cat);
+          btn.className = `px-3 py-1 rounded-xl text-xs font-bold transition-all ${isActive ? 'bg-[#B08889] text-white shadow-sm' : 'bg-white text-[#7A726E] border border-[#D5D0CC]'}`;
+          filterContainer.appendChild(btn);
+        });
+      }
 
       let sortedKeys = Object.keys(map);
       if (customProcurementOrder && customProcurementOrder.length > 0) {
@@ -436,8 +493,16 @@
         });
       }
 
+      const filteredMap = {};
+
       sortedKeys.forEach(k => {
-        const item = map[k], checked = checkedStatus[k] || false;
+        const item = map[k];
+        if (currentProcurementCategoryFilter !== "全部" && item.category !== currentProcurementCategoryFilter) {
+          return;
+        }
+        filteredMap[k] = item;
+
+        const checked = checkedStatus[k] || false;
         const savedVal = localPrices[k];
         const currentLocalPrice = (savedVal !== undefined && savedVal !== null) ? savedVal : "";
         const numericPrice = parseFloat(currentLocalPrice) || 0;
@@ -446,6 +511,16 @@
         const currentPurchasedStr = (savedPurchased !== undefined && savedPurchased !== null) ? savedPurchased : "";
         const effectiveQty = getEffectiveQty(k, item.totalQty);
         const subtotalLocal = numericPrice * effectiveQty;
+
+        // 取得對應商品的庫存值（若沒填或為 0 則顯示空字串並提示 0）
+        const prodId = findProductIdByNameAndSpec(item.name, item.spec);
+        let stockValStr = "";
+        if (prodId && catalog[prodId]) {
+          const s = catalog[prodId].stock;
+          if (s !== undefined && s !== null && s !== "") {
+            stockValStr = s;
+          }
+        }
 
         let purchasedInputStyle = "background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;";
         if (currentPurchasedStr !== "") {
@@ -460,8 +535,9 @@
         const prices = Object.keys(item.priceBreakdown).sort((a, b) => Number(a) - Number(b));
         const priceBadges = prices.map(p => {
           const count = item.priceBreakdown[p];
+          if (count === 0) return "";
           return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-[#EFECE9] text-[#7A726E]">NT$${p} ×${count}</span>`;
-        }).join(" ");
+        }).filter(Boolean).join(" ");
 
         const tr = document.createElement("tr");
         tr.className = `${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors cursor-grab active:cursor-grabbing`;
@@ -491,33 +567,44 @@
         tr.innerHTML = `
           <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm"></i></td>
           <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleProcurementChecked('${k}', this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
-          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${item.name}</td>
+          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">
+            <div>${item.name}</div>
+            <span class="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 bg-[#EFECE9] text-[#7A726E] rounded-md"><i class="fa-solid fa-tag text-[9px] mr-0.5"></i>${item.category}</span>
+          </td>
           <td class="p-2 sm:p-3 space-y-1">
             <div class="text-[#7A726E]">${item.spec || '-'}</div>
             <div class="flex flex-wrap gap-1">${priceBadges}</div>
           </td>
           <td class="p-2 sm:p-3 text-right font-bold text-[#7A726E]" id="qty-${k}">${item.totalQty}</td>
           <td class="p-2 sm:p-3 text-right">
+            <input type="number" min="0" id="input-stock-${k}" placeholder="0 (無現貨)" value="${stockValStr}" 
+              onfocus="activeStockKey='${k}'" 
+              onblur="onStockBlur('${k}', '${item.name}', '${item.spec || ''}', this.value)" 
+              oninput="updateProductStockByRow('${k}', '${item.name}', '${item.spec || ''}', this.value)" 
+              style="background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;"
+              class="w-24 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
+          </td>
+          <td class="p-2 sm:p-3 text-right">
             <input type="number" min="0" id="input-purchased-${k}" placeholder="未填" value="${currentPurchasedStr}" 
               onfocus="activePurchasedKey='${k}'" 
-              onblur="onPurchasedBlur('${k}', this.value, ${item.totalQty})" 
-              oninput="updatePurchasedQty('${k}', this.value, ${item.totalQty})" 
+              onblur="onPurchasedBlur('${k}', this.value)" 
+              oninput="updatePurchasedQty('${k}', this.value)" 
               style="${purchasedInputStyle}"
-              class="w-24 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
+              class="w-20 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
           </td>
           <td class="p-2 sm:p-3 text-right">
             <input type="number" id="input-price-${k}" placeholder="單價" value="${currentLocalPrice}" 
               onfocus="activeInputKey='${k}'" 
-              onblur="onPriceBlur('${k}', this.value, ${item.totalQty})" 
-              oninput="updateLocalPrice('${k}', this.value, ${item.totalQty})" 
-              class="w-24 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none">
+              onblur="onPriceBlur('${k}', this.value)" 
+              oninput="updateLocalPrice('${k}', this.value)" 
+              class="w-20 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none">
           </td>
           <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
         `;
         tbody.appendChild(tr);
       });
 
-      calculateTotals(map);
+      calculateTotals(filteredMap);
     };
 
     function reorderProcurement(draggedKey, targetKey, currentKeys) {
@@ -560,9 +647,30 @@
       if (twdTotalEl) twdTotalEl.innerText = `NT$ ${Math.round(grandLocalTotal * currencyRate).toLocaleString()}`;
     };
 
+    // 即時更新商品庫存（沒填一律視為 0）
+    let stockSaveTimer = {};
+    window.updateProductStockByRow = function(key, name, spec, val) {
+      const numericVal = (val === "" || val === null) ? 0 : Math.max(0, parseInt(val, 10));
+      const prodId = findProductIdByNameAndSpec(name, spec);
+      if (prodId) {
+        if (stockSaveTimer[key]) clearTimeout(stockSaveTimer[key]);
+        stockSaveTimer[key] = setTimeout(() => {
+          update(ref(db, `catalog/${prodId}`), { stock: numericVal });
+        }, 600);
+      }
+    };
+
+    window.onStockBlur = function(key, name, spec, val) {
+      activeStockKey = null;
+      const numericVal = (val === "" || val === null) ? 0 : Math.max(0, parseInt(val, 10));
+      const prodId = findProductIdByNameAndSpec(name, spec);
+      if (prodId) {
+        update(ref(db, `catalog/${prodId}`), { stock: numericVal });
+      }
+    };
+
     let purchasedSaveTimer = {};
-    window.updatePurchasedQty = function(key, val, totalDemandQty) {
-      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
+    window.updatePurchasedQty = function(key, val) {
       const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10));
       purchasedQtys[key] = numericVal;
       calculateTotals();
@@ -582,7 +690,6 @@
 
     let priceSaveTimer = {};
     window.updateLocalPrice = function(key, val) {
-      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
       const numericVal = (val === "" || val === null) ? null : parseFloat(val);
       localPrices[key] = numericVal;
       calculateTotals();
@@ -683,8 +790,10 @@
         const itemCategory = (item.category || '未分類').trim();
         if (currentAdminCategoryFilter !== "全部" && itemCategory !== currentAdminCategoryFilter) return;
 
-        const isOutOfStock = item.isOutOfStock || false;
-        const stockText = (item.stock !== undefined && item.stock !== "" && item.stock !== null) ? `庫存：${item.stock}` : `庫存：不限`;
+        // 沒填或 <= 0 一律視同無現貨 (0)
+        const currentStock = (item.stock !== undefined && item.stock !== null && item.stock !== "") ? Math.max(0, Number(item.stock)) : 0;
+        const isOutOfStock = item.isOutOfStock || currentStock <= 0;
+        const stockText = isOutOfStock ? `無現貨 (0)` : `現貨：${currentStock}`;
         const safeProdName = (item.name || '').replace(/'/g, "\\'");
 
         const card = document.createElement("div");
@@ -698,7 +807,7 @@
               </button>
               <div class="flex items-center gap-1.5">
                 <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
-                  ${isOutOfStock ? '已完售' : stockText}
+                  ${stockText}
                 </span>
               </div>
             </div>
@@ -753,20 +862,19 @@
       const name = document.getElementById("p-name").value.trim();
       const spec = document.getElementById("p-spec").value.trim();
       const price = Number(document.getElementById("p-price").value);
-      const stockVal = document.getElementById("p-stock").value;
-      const stock = (stockVal === "" ? null : Number(stockVal));
       const category = document.getElementById("p-category").value.trim() || "未分類";
       const isOutOfStock = document.getElementById("p-status").value === "out_of_stock";
       const fileInput = document.getElementById("p-image-file");
 
       const saveData = (imageUrl) => {
-        const payload = { name, spec, price, stock, category, isOutOfStock };
+        const payload = { name, spec, price, category, isOutOfStock };
         if (imageUrl !== undefined) payload.image = imageUrl;
 
         if (editId) {
           update(ref(db, `catalog/${editId}`), payload).then(() => resetForm());
         } else {
           payload.image = imageUrl || "";
+          payload.stock = 0; // 預設 0（無現貨），需到採購與庫存統計輸入數量
           payload.order = Object.keys(catalog).length;
           set(push(ref(db, "catalog")), payload).then(() => resetForm());
         }
@@ -786,7 +894,6 @@
       document.getElementById("p-name").value = item.name;
       document.getElementById("p-spec").value = item.spec || "";
       document.getElementById("p-price").value = item.price;
-      document.getElementById("p-stock").value = (item.stock !== undefined && item.stock !== null) ? item.stock : "";
       document.getElementById("p-category").value = item.category || "未分類";
       document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
       document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
@@ -800,7 +907,6 @@
       document.getElementById("p-name").value = "";
       document.getElementById("p-spec").value = "";
       document.getElementById("p-price").value = "";
-      document.getElementById("p-stock").value = "";
       document.getElementById("p-category").value = "";
       document.getElementById("p-status").value = "available";
       document.getElementById("p-image-file").value = "";
