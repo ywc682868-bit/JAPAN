@@ -788,13 +788,32 @@
       renderProducts();
     };
 
+    // 點擊分類標籤直接更換商品分類
+    window.quickChangeCategory = function(id, currentCategory) {
+      // 收集系統中目前所有出現過的分類
+      const allCats = new Set(["未分類", "餅乾訂購", "11月東京連線"]);
+      Object.values(catalog).forEach(item => {
+        if (item.category) allCats.add(item.category.trim());
+      });
+
+      const catArray = Array.from(allCats);
+      let promptText = "請輸入或選擇要更改的分類名稱：\n\n現有分類：" + catArray.join("、");
+      let newCat = prompt(promptText, currentCategory);
+      
+      if (newCat !== null) {
+        newCat = newCat.trim();
+        if (newCat === "") newCat = "未分類";
+        update(ref(db, `catalog/${id}`), { category: newCat })
+          .catch(err => alert("更新分類失敗：" + err.message));
+      }
+    };
+
     function renderProducts() {
       const grid = document.getElementById("admin-product-grid");
       const filterContainer = document.getElementById("admin-category-filters");
       if (!grid) return;
       grid.innerHTML = "";
 
-      // 收集所有分類
       const categories = new Set(["全部"]);
       Object.values(catalog).forEach(item => {
         if (item.category) categories.add(item.category.trim());
@@ -854,7 +873,9 @@
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-center mb-2">
-              <span class="text-[11px] font-bold px-2 py-0.5 bg-[#EFECE9] text-[#7A726E] rounded-md">${itemCategory}</span>
+              <button type="button" onclick="quickChangeCategory('${id}', '${itemCategory}')" title="點擊直接更改分類" class="text-[11px] font-bold px-2.5 py-1 bg-[#EFECE9] hover:bg-[#B08889] hover:text-white text-[#7A726E] rounded-lg transition-all shadow-xs flex items-center gap-1">
+                <i class="fa-solid fa-tag text-[10px]"></i> ${itemCategory} <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
+              </button>
               <div class="flex items-center gap-1.5">
                 <button type="button" onclick="toggleStockStatus('${id}', ${!isOutOfStock})" class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
                   ${isOutOfStock ? '已完售' : '供應中'}
@@ -962,7 +983,7 @@
       const name = document.getElementById("p-name").value.trim();
       const spec = document.getElementById("p-spec").value.trim();
       const price = Number(document.getElementById("p-price").value);
-      const category = document.getElementById("p-category").value.trim() || "一般商品";
+      const category = document.getElementById("p-category").value.trim() || "未分類";
       const isOutOfStock = document.getElementById("p-status").value === "out_of_stock";
       const fileInput = document.getElementById("p-image-file");
 
@@ -995,7 +1016,7 @@
       document.getElementById("p-name").value = item.name;
       document.getElementById("p-spec").value = item.spec || "";
       document.getElementById("p-price").value = item.price;
-      document.getElementById("p-category").value = item.category || "一般商品";
+      document.getElementById("p-category").value = item.category || "未分類";
       document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
       document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
       document.getElementById("submit-btn").innerText = "確認修改";
@@ -1003,7 +1024,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.resetForm = function() {
+    window.resetForm = function`() {
       document.getElementById("edit-id").value = "";
       document.getElementById("p-name").value = "";
       document.getElementById("p-spec").value = "";
