@@ -345,15 +345,18 @@
     };
 
     function findProductByNameAndSpec(name, spec) {
+      const cleanTargetName = (name || '').replace(/["']/g, '').trim();
+      const cleanTargetSpec = (spec || '').trim();
       for (const id in catalog) {
         const item = catalog[id];
-        if (item.name.trim() === name.trim() && (item.spec || "").trim() === (spec || "").trim()) {
+        const cleanItemName = (item.name || '').replace(/["']/g, '').trim();
+        const cleanItemSpec = (item.spec || '').trim();
+        if (cleanItemName === cleanTargetName && cleanItemSpec === cleanTargetSpec) {
           return { id, ...item };
         }
       }
       return null;
     }
-
     function findProductIdByNameAndSpec(name, spec) {
       const found = findProductByNameAndSpec(name, spec);
       return found ? found.id : null;
