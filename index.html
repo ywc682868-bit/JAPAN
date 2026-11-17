@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>奶油雜貨店 - 管理後台</title>
+  <title>奶油雜貨店</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
     body { background-color: #EFECE9 !important; color: #4A4543 !important; }
@@ -22,6 +21,8 @@
     .bg-\[\#F8F6F4\] { background-color: #F8F6F4 !important; }
     .bg-\[\#B08889\] { background-color: #B08889 !important; }
     .bg-\[\#8F9E93\] { background-color: #8F9E93 !important; }
+    .bg-\[\#3A3837\] { background-color: #3A3837 !important; }
+    .bg-\[\#6C7D8E\] { background-color: #6C7D8E !important; }
     .bg-\[\#E2DEDA\] { background-color: #E2DEDA !important; }
     .text-\[\#4A4543\] { color: #4A4543 !important; }
     .text-\[\#B08889\] { color: #B08889 !important; }
@@ -33,195 +34,134 @@
     /* 手機模式滾動優化 */
     .scrollbar-none::-webkit-scrollbar { display: none; }
     .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+    html { scroll-behavior: smooth; }
   </style>
 
   <script type="importmap">
     {
       "imports": {
         "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-        "firebase/database": "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+        "firebase/database": "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
       }
     }
   </script>
 </head>
-<body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-12">
+<body class="bg-[#EFECE9] min-h-screen font-sans text-[#4A4543] antialiased pb-24 sm:pb-12">
 
-  <!-- 登入遮罩 -->
-  <div id="auth-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center p-4">
-    <div class="bg-[#F8F6F4] p-6 sm:p-8 rounded-3xl shadow-xl max-w-sm w-full space-y-5 text-center border border-[#D5D0CC]">
-      <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto text-[#B08889]" style="background-color: rgba(176, 136, 137, 0.2);">
-        <i class="fa-solid fa-tree text-2xl"></i>
-      </div>
-      <div>
-        <h2 class="text-xl font-bold text-[#4A4543]">管理員安全登入</h2>
-        <p class="text-xs text-[#7A726E] mt-1">請輸入後台管理帳號</p>
-      </div>
-      <form onsubmit="handleLogin(event)" class="space-y-3 text-left">
-        <div>
-          <label class="block text-xs font-semibold text-[#7A726E] mb-1">管理員 Email</label>
-          <input type="email" id="admin-email" required placeholder="admin@butter.com" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-[#7A726E] mb-1">密碼</label>
-          <input type="password" id="admin-password" required placeholder="••••••••" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-        </div>
-        <button type="submit" class="w-full py-3 bg-[#B08889] text-white font-bold rounded-xl shadow-sm transition-all">登入後台</button>
-      </form>
-      <p id="login-error" class="text-xs text-red-500 font-medium"></p>
-    </div>
-  </div>
-
-  <div id="admin-content" class="hidden max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
-    <header class="bg-[#F8F6F4] p-4 sm:p-5 rounded-2xl shadow-sm flex justify-between items-center border border-[#D5D0CC]">
+  <!-- 頁首導覽 -->
+  <header class="bg-[#F8F6F4] border-b border-[#D5D0CC] shadow-sm sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
       <div class="flex items-center gap-2.5 sm:gap-3">
-        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-[#8F9E93]" style="background-color: rgba(143, 158, 147, 0.2);">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-[#B08889]" style="background-color: rgba(176, 136, 137, 0.2);">
           <i class="fa-solid fa-cookie-bite text-base sm:text-lg"></i>
         </div>
-        <h1 class="text-lg sm:text-xl font-bold text-[#4A4543]">奶油雜貨店 · 管理後台</h1>
-      </div>
-      <button onclick="handleLogout()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-[#E2DEDA] text-[#4A4543] text-xs font-bold rounded-xl transition-all whitespace-nowrap">登出</button>
-    </header>
-
-    <!-- 標籤導覽 -->
-    <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-x-auto scrollbar-none shadow-sm p-1 gap-1">
-      <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl transition-all whitespace-nowrap">採購與庫存統計</button>
-      <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">排隊清單</button>
-      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">商品管理</button>
-    </div>
-
-    <!-- 1. 採購與庫存統計表 -->
-    <div id="tab-procurement" class="bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
-      <div class="flex justify-between items-center flex-wrap gap-2.5 border-b border-[#EFECE9] pb-3">
         <div>
-          <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
-            <i class="fa-solid fa-list-check text-[#B08889]"></i>採購與現貨庫存清單
+          <h1 class="text-lg sm:text-2xl font-bold tracking-wide text-[#4A4543] leading-tight">奶油雜貨店</h1>
+          <p class="text-xs text-[#7A726E] font-medium tracking-normal">Butter Variety Store</p>
+        </div>
+      </div>
+      <a href="manager.html" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-[#E2DEDA] text-[#4A4543] transition-all flex items-center gap-1" title="管理登入">
+        <i class="fa-solid fa-lock text-[#7A726E]"></i> <span class="hidden sm:inline">管理</span>後台
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-3 sm:px-4 mt-4 sm:mt-6 space-y-4">
+    <!-- 喊單須知公告區塊 -->
+    <div class="p-4 sm:p-5 bg-[#F8F6F4] rounded-2xl border-l-4 border-[#B08889] shadow-sm text-xs sm:text-sm text-[#4A4543] space-y-2">
+      <div class="flex items-center gap-2 font-bold text-[#B08889] text-sm sm:text-base">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>喊單須知與購物說明</span>
+      </div>
+      <p class="font-bold text-red-600">請注意！喊單不代表購買成功</p>
+      <p>有買到後闆娘會通知您</p>
+      <p>若此次連線您沒有其他有興趣的，<br class="sm:hidden">請聯繫闆娘或小幫手結單</p>
+      
+      <div class="pt-2 border-t border-[#EFECE9] space-y-1 text-xs text-[#7A726E]">
+        <p><span class="font-semibold text-[#4A4543]">結單方式：</span>賣貨便、7-11、郵局</p>
+        <p><span class="font-semibold text-[#4A4543]">運費及包材：</span>60-200，依商品多寡決定</p>
+        <p class="pt-1 text-[#4A4543]">小本經營，也都需要花時間找包材寄出商品，<br class="sm:hidden"><span class="font-bold text-red-600">若無法接受請勿購買！</span></p>
+      </div>
+    </div>
+
+    <div id="connection-status" class="p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center" style="background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);">
+      <i class="fa-solid fa-spinner fa-spin mr-2"></i> 連線資料庫中...
+    </div>
+
+    <!-- 客戶分類篩選列 -->
+    <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1" id="client-category-filters">
+      <!-- 動態載入分類按鈕 -->
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
+      <!-- 商品列表 -->
+      <div class="lg:col-span-2 space-y-3 sm:space-y-4">
+        <h2 class="text-lg sm:text-xl font-bold text-[#4A4543] flex items-center gap-2">
+          <i class="fa-solid fa-gift text-[#B08889]"></i> 商品目錄
+        </h2>
+        <div id="customer-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"></div>
+      </div>
+
+      <!-- 送單填寫區塊 -->
+      <div class="lg:col-span-1" id="order-section">
+        <div class="bg-[#F8F6F4] rounded-3xl shadow-sm border border-[#D5D0CC] p-4 sm:p-5 sticky top-20 space-y-4">
+          <h3 class="text-base sm:text-lg font-bold text-[#4A4543] border-b border-[#EFECE9] pb-3 flex justify-between items-center">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-[#B08889]"></i>您的訂購清單</span>
+            <span id="cart-item-count" class="text-xs text-[#6B4B4C] px-2.5 py-1 rounded-full font-bold" style="background-color: rgba(176, 136, 137, 0.2);">0 件</span>
           </h3>
-          <p class="text-[11px] text-[#7A726E] mt-0.5">在此可直接輸入「現貨庫存」與「已採購數」，並可上下拖曳調整品項順序。</p>
-        </div>
-        
-        <div class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
-          <div class="flex items-center gap-1">
-            <span class="text-[#7A726E] font-medium">貨幣：</span>
-            <input type="text" id="currency-symbol" value="JP¥" oninput="renderProcurement()" class="w-12 sm:w-14 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
+          <div id="cart-items-list" class="space-y-2 max-h-60 overflow-y-auto divide-y divide-[#EFECE9] text-sm">
+            <p class="text-[#A39E9A] text-center py-6 text-xs">尚未選擇商品</p>
           </div>
-          <div class="flex items-center gap-1">
-            <span class="text-[#7A726E] font-medium pl-1">匯率：</span>
-            <input type="number" id="currency-rate" value="0.21" step="0.001" oninput="renderProcurement()" class="w-16 sm:w-16 p-1 bg-white border border-[#D5D0CC] rounded-lg font-bold text-center">
-          </div>
+          <form onsubmit="submitCustomerOrder(event)" class="space-y-3.5 pt-3 border-t border-[#EFECE9]">
+            <!-- 平台選單：一般商品顯示，餅乾類商品自動隱藏 -->
+            <div id="platform-container">
+              <label class="block text-xs font-semibold text-[#7A726E] mb-1">喊單平台</label>
+              <select id="cust-platform" onchange="updatePlatformStyle()" class="w-full text-sm p-2.5 rounded-xl focus:outline-none font-bold transition-all border border-[#D5D0CC]">
+                <option value="LINE" class="bg-white text-[#4A4543]">LINE</option>
+                <option value="Threads" class="bg-[#3A3837] text-white">Threads</option>
+                <option value="IG" class="bg-[#B08889] text-white">Instagram (IG)</option>
+                <option value="FB" class="bg-[#6C7D8E] text-white">Facebook (FB)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[#7A726E] mb-1">收件人 <span class="text-red-500">*</span></label>
+              <input type="text" id="cust-name" required placeholder="請輸入真實姓名" class="w-full text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none">
+            </div>
+            <!-- 餅乾類專用聯絡資訊欄位 -->
+            <div id="cookie-fields" class="space-y-3.5 hidden">
+              <div>
+                <label class="block text-xs font-semibold text-[#7A726E] mb-1">聯繫電話 <span class="text-red-500">*</span></label>
+                <input type="tel" id="cust-phone" placeholder="例如：0912345678" class="w-full text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-[#7A726E] mb-1">收件地址 <span class="text-red-500">*</span></label>
+                <input type="text" id="cust-address" placeholder="請輸入完整收件地址" class="w-full text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none">
+              </div>
+            </div>
+            <div class="bg-[#EFECE9] p-3.5 rounded-2xl flex justify-between items-center font-bold text-[#4A4543]">
+              <span class="text-xs text-[#7A726E]">總金額：</span>
+              <span id="cart-total-price" class="text-lg sm:text-xl text-[#B08889]">NT$ 0</span>
+            </div>
+            <button type="submit" id="btn-submit-order" disabled class="w-full py-3 bg-[#B08889] text-white font-bold rounded-xl shadow-sm transition-all text-sm opacity-40">
+              確認喊單排隊
+            </button>
+          </form>
         </div>
-      </div>
-
-      <div class="overflow-x-auto -mx-3 sm:mx-0">
-        <table class="w-full text-left text-xs sm:text-sm min-w-[780px] sm:min-w-full">
-          <thead>
-            <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
-              <th class="p-2 sm:p-3 w-8 text-center"></th>
-              <th class="p-2 sm:p-3 w-10 text-center">已購</th>
-              <th class="p-2 sm:p-3">商品名稱</th>
-              <th class="p-2 sm:p-3">規格 / 金額</th>
-              <th class="p-2 sm:p-3 text-right whitespace-nowrap">需求總數</th>
-              <th class="p-2 sm:p-3 text-right whitespace-nowrap">現貨庫存</th>
-              <th class="p-2 sm:p-3 text-right whitespace-nowrap">已採購數</th>
-              <th class="p-2 sm:p-3 text-right whitespace-nowrap">單價 (<span class="header-curr-label">JP¥</span>)</th>
-              <th class="p-2 sm:p-3 text-right rounded-r-xl whitespace-nowrap">小計 (<span class="header-curr-label">JP¥</span>)</th>
-            </tr>
-          </thead>
-          <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
-          <tfoot>
-            <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="8" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">採購總計金額：</td>
-              <td id="procurement-local-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">JP¥ 0</td>
-            </tr>
-            <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E]">
-              <td colspan="8" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">當地貨幣估算台幣總額 (NT$)：</td>
-              <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-xs sm:text-sm font-black whitespace-nowrap">NT$ 0</td>
-            </tr>
-          </tfoot>
-        </table>
       </div>
     </div>
+  </main>
 
-    <!-- 2. 排隊出貨清單 -->
-    <div id="tab-queue" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-3 sm:space-y-4">
-      <div class="flex justify-between items-center flex-wrap gap-2">
-        <div>
-          <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
-            <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單順序自動配貨清單
-          </h3>
-        </div>
-        <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
-        </button>
-      </div>
-      <div class="overflow-x-auto -mx-3 sm:mx-0">
-        <table class="w-full text-left text-xs sm:text-sm min-w-[680px] sm:min-w-full">
-          <thead>
-            <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
-              <th class="p-2 sm:p-3 w-12 text-center rounded-l-xl">順位</th>
-              <th class="p-2 sm:p-3">時間</th>
-              <th class="p-2 sm:p-3">平台</th>
-              <th class="p-2 sm:p-3">買家/收件人</th>
-              <th class="p-2 sm:p-3">明細與收件資訊</th>
-              <th class="p-2 sm:p-3 text-right whitespace-nowrap">金額</th>
-              <th class="p-2 sm:p-3 text-center rounded-r-xl">刪除</th>
-            </tr>
-          </thead>
-          <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
-          <tfoot>
-            <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單實配總計金額：</td>
-              <td id="queue-grand-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">NT$ 0</td>
-              <td class="p-2.5 sm:p-3 rounded-r-xl"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
-
-    <!-- 3. 商品管理 -->
-    <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-4 sm:space-y-6">
-      <div class="border border-[#D5D0CC] p-4 sm:p-5 rounded-2xl bg-[#FAF9F7] space-y-3 sm:space-y-4">
-        <h3 id="form-title" class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
-        
-        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-center">
-          <input type="hidden" id="edit-id">
-          <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-          <input type="text" id="p-spec" placeholder="規格/顏色" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-          <input type="number" id="p-price" required placeholder="售價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-          <input type="text" id="p-category" required list="category-list" placeholder="分類名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-          <datalist id="category-list">
-            <option value="聖誕節餅乾">
-            <option value="11月東京連線">
-          </datalist>
-          <select id="p-status" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-            <option value="available">正常供貨中</option>
-            <option value="out_of_stock">已完售/停止喊單</option>
-          </select>
-          <div>
-            <input type="file" id="p-image-file" accept="image/*" class="text-xs w-full">
-          </div>
-          <div class="flex gap-2">
-            <button type="submit" id="submit-btn" class="flex-1 py-2.5 bg-[#8F9E93] text-white font-bold rounded-xl text-sm shadow-sm">確認上架</button>
-            <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-2.5 bg-[#D5D0CC] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- 管理後台篩選器 -->
-      <div class="flex items-center gap-2 flex-wrap bg-[#EFECE9] p-3 rounded-2xl">
-        <span class="text-xs font-bold text-[#7A726E]">篩選顯示分類：</span>
-        <div id="admin-category-filters" class="flex flex-wrap gap-1.5"></div>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" id="admin-product-grid"></div>
-    </div>
-  </div>
+  <!-- 手機版右下角浮動送單按鈕 -->
+  <a href="#order-section" id="mobile-floating-btn" class="lg:hidden fixed bottom-5 right-4 z-50 bg-[#B08889] text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all active:scale-95 border-2 border-white">
+    <i class="fa-solid fa-cart-shopping text-base"></i>
+    <span class="font-bold text-xs">喊單</span>
+    <span id="floating-cart-count" class="bg-white text-[#B08889] text-[10px] font-black px-1.5 py-0.5 rounded-full">0</span>
+  </a>
 
   <script type="module">
     import { initializeApp } from "firebase/app";
-    import { getDatabase, ref, set, push, onValue, remove, update } from "firebase/database";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+    import { getDatabase, ref, set, push, onValue } from "firebase/database";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD25JH9MgZtpDbOgox8vp4_bS16-3Y_fnk",
@@ -233,635 +173,305 @@
       appId: "1:498008003432:web:4ecd08d11538d03f1b3cdd"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app);
+    const db = getDatabase(initializeApp(firebaseConfig));
+    let catalogProducts = {};
+    let currentCart = {};
+    let currentCategoryFilter = "全部";
 
-    let catalog = {}, orders = [], checkedStatus = {}, localPrices = {}, purchasedQtys = {}, customProcurementOrder = [];
-    let draggedProcurementKey = null;
-    let activeInputKey = null;
-    let activePurchasedKey = null;
-    let activeStockKey = null;
-    let currentAdminCategoryFilter = "全部";
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        document.getElementById("auth-overlay").classList.add("hidden");
-        document.getElementById("admin-content").classList.remove("hidden");
-        initListeners();
-      } else {
-        document.getElementById("auth-overlay").classList.remove("hidden");
-        document.getElementById("admin-content").classList.add("hidden");
+    // 取得商品有效庫存：沒填、null、undefined 或空字串一律視同 0（無現貨）
+    function getAvailableStock(item) {
+      if (!item || item.stock === undefined || item.stock === null || item.stock === "") {
+        return 0;
       }
+      return Math.max(0, Number(item.stock) || 0);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      updatePlatformStyle();
     });
 
-    window.handleLogin = function(e) {
-      e.preventDefault();
-      signInWithEmailAndPassword(auth, document.getElementById("admin-email").value, document.getElementById("admin-password").value)
-        .catch(err => { document.getElementById("login-error").innerText = "登入失敗：" + err.message; });
-    };
-
-    window.handleLogout = () => signOut(auth);
-
-    function initListeners() {
-      onValue(ref(db, "catalog"), s => { catalog = s.val() || {}; renderAll(); });
-      onValue(ref(db, "orders"), s => {
-        const data = s.val() || {};
-        orders = Object.keys(data).map(id => ({ id, ...data[id] }));
-        orders.sort((a, b) => (a.orderIndex ?? a.timestamp) - (b.orderIndex ?? b.timestamp));
-        renderAll();
-      });
-      onValue(ref(db, "procurement_status"), s => { checkedStatus = s.val() || {}; renderProcurement(); });
-      onValue(ref(db, "procurement_local_prices"), s => { localPrices = s.val() || {}; renderProcurement(); });
-      onValue(ref(db, "procurement_purchased_qty"), s => { 
-        purchasedQtys = s.val() || {}; 
-        renderProcurement(); 
-        renderQueue();
-      });
-      onValue(ref(db, "procurement_custom_order"), s => { customProcurementOrder = s.val() || []; renderProcurement(); });
-    }
-
-    window.switchTab = function(tab) {
-      ['procurement', 'queue', 'products'].forEach(t => {
-        document.getElementById(`tab-${t}`).classList.add('hidden');
-        document.getElementById(`tab-btn-${t}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap";
-      });
-      document.getElementById(`tab-${tab}`).classList.remove('hidden');
-      document.getElementById(`tab-btn-${tab}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl shadow-sm transition-all whitespace-nowrap";
-      if (tab === 'queue') renderQueue();
-      if (tab === 'procurement') renderProcurement();
-    };
-
-    function renderAll() {
-      renderProcurement();
-      renderQueue();
-      renderProducts();
-    }
-
-    function sanitizeKey(str) {
-      return (str || '').replace(/[.#$/\[\]]/g, "_");
-    }
-
-    function getItemKey(name, spec) {
-      const cleanName = (name || '').replace(/["']/g, '').trim();
-      const cleanSpec = (spec || '').trim();
-      return sanitizeKey(`${cleanName}_${cleanSpec}`);
-    }
-
-    window.toggleProcurementChecked = function(key, isChecked) {
-      set(ref(db, `procurement_status/${key}`), isChecked);
-    };
-
-    window.deleteOrder = function(e, id, customerName) {
-      if (e) e.stopPropagation();
-      const label = customerName ? `「${customerName}」的` : '此筆';
-      if (confirm(`確定要刪除${label}訂單嗎？刪除後無法復原。`)) {
-        remove(ref(db, `orders/${id}`)).catch(err => {
-          alert("刪除失敗：" + err.message);
-        });
-      }
-    };
-
-    window.deleteProduct = function(e, id, productName) {
-      if (e) e.stopPropagation();
-      const label = productName ? `「${productName}」` : '此商品';
-      if (confirm(`確定要刪除${label}嗎？`)) {
-        remove(ref(db, `catalog/${id}`)).catch(err => {
-          alert("刪除失敗：" + err.message);
-        });
-      }
-    };
-
-    // 尋找對應名稱與規格的商品 ID
-    function findProductIdByNameAndSpec(name, spec) {
-      for (const id in catalog) {
-        const item = catalog[id];
-        if (item.name.trim() === name.trim() && (item.spec || "").trim() === (spec || "").trim()) {
-          return id;
-        }
-      }
-      return null;
-    }
-
-    function computeOrderAllocations() {
-      const remainingPool = {};
-      const hasLimit = {};
-
-      Object.keys(purchasedQtys).forEach(k => {
-        const val = purchasedQtys[k];
-        if (val !== undefined && val !== null && val !== "") {
-          remainingPool[k] = Math.max(0, Number(val));
-          hasLimit[k] = true;
-        }
-      });
-
-      return orders.map(o => {
-        let originalTotal = 0;
-        let allocatedTotal = 0;
-
-        const allocatedItems = (o.items || []).map(i => {
-          const key = getItemKey(i.name, i.spec);
-          const reqQty = Number(i.qty || 0);
-          const unitPrice = Number(i.price || 0);
-          originalTotal += reqQty * unitPrice;
-
-          let allocQty = reqQty;
-          let isTracked = false;
-
-          if (hasLimit[key]) {
-            isTracked = true;
-            const avail = remainingPool[key] || 0;
-            allocQty = Math.min(reqQty, avail);
-            remainingPool[key] = Math.max(0, avail - allocQty);
-          }
-
-          allocatedTotal += allocQty * unitPrice;
-
-          return {
-            ...i,
-            key,
-            reqQty,
-            allocQty,
-            isTracked
-          };
-        });
-
-        return {
-          ...o,
-          allocatedItems,
-          originalTotal: Number(o.totalAmount ?? originalTotal),
-          allocatedTotal,
-          hasAnyLimit: Object.keys(hasLimit).length > 0
-        };
-      });
-    }
-
-    function getEffectiveQty(key, totalDemandQty) {
-      const pVal = purchasedQtys[key];
-      if (pVal !== undefined && pVal !== null && pVal !== "") {
-        return Number(pVal) || 0;
-      }
-      return totalDemandQty;
-    }
-
-    window.renderProcurement = function() {
-      const tbody = document.getElementById("procurement-tbody");
-      if (!tbody) return;
-
-      if (
-        (activeInputKey && document.getElementById(`input-price-${activeInputKey}`) === document.activeElement) ||
-        (activePurchasedKey && document.getElementById(`input-purchased-${activePurchasedKey}`) === document.activeElement) ||
-        (activeStockKey && document.getElementById(`input-stock-${activeStockKey}`) === document.activeElement)
-      ) {
-        return;
-      }
+    onValue(ref(db, "catalog"), (snapshot) => {
+      catalogProducts = snapshot.val() || {};
       
-      tbody.innerHTML = "";
-      
-      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
-      document.querySelectorAll(".header-curr-label").forEach(el => el.innerText = currencySymbol);
-
-      const map = {};
-      orders.forEach(o => (o.items || []).forEach(i => {
-        const cleanName = (i.name || '').replace(/["']/g, '').trim();
-        const cleanSpec = (i.spec || '').trim();
-        const key = getItemKey(cleanName, cleanSpec);
-        const regPrice = Number(i.price || 0);
-        
-        if (!map[key]) {
-          map[key] = { name: cleanName, spec: cleanSpec, priceBreakdown: {}, totalQty: 0, key };
-        }
-        map[key].totalQty += i.qty;
-        map[key].priceBreakdown[regPrice] = (map[key].priceBreakdown[regPrice] || 0) + i.qty;
-      }));
-
-      // 同時也把catalog中有設定庫存但目前沒有訂單的商品納入清單顯示
-      Object.keys(catalog).forEach(prodId => {
-        const prod = catalog[prodId];
-        const cleanName = (prod.name || '').replace(/["']/g, '').trim();
-        const cleanSpec = (prod.spec || '').trim();
-        const key = getItemKey(cleanName, cleanSpec);
-        if (!map[key]) {
-          map[key] = { name: cleanName, spec: cleanSpec, priceBreakdown: { [prod.price || 0]: 0 }, totalQty: 0, key };
+      // 檢查購物車內商品是否完售或超過庫存（沒填視同 0）
+      Object.keys(currentCart).forEach(id => {
+        const item = catalogProducts[id];
+        const availableStock = getAvailableStock(item);
+        if (!item || item.isOutOfStock || availableStock <= 0) {
+          delete currentCart[id];
+        } else if (currentCart[id] > availableStock) {
+          currentCart[id] = availableStock;
         }
       });
 
-      let sortedKeys = Object.keys(map);
-      if (customProcurementOrder && customProcurementOrder.length > 0) {
-        sortedKeys.sort((a, b) => {
-          let idxA = customProcurementOrder.indexOf(a);
-          let idxB = customProcurementOrder.indexOf(b);
-          if (idxA === -1) idxA = 9999;
-          if (idxB === -1) idxB = 9999;
-          return idxA - idxB;
-        });
-      }
+      renderCategories();
+      renderCatalog();
+      renderCart();
+      updatePlatformStyle();
 
-      sortedKeys.forEach(k => {
-        const item = map[k], checked = checkedStatus[k] || false;
-        const savedVal = localPrices[k];
-        const currentLocalPrice = (savedVal !== undefined && savedVal !== null) ? savedVal : "";
-        const numericPrice = parseFloat(currentLocalPrice) || 0;
+      const statusEl = document.getElementById("connection-status");
+      statusEl.className = "p-3 sm:p-3.5 rounded-2xl text-xs font-medium border flex items-center";
+      statusEl.style.cssText = "background-color: rgba(143, 158, 147, 0.15); color: #4E5C53; border-color: rgba(143, 158, 147, 0.3);";
+      statusEl.innerHTML = `<i class="fa-solid fa-wifi mr-2"></i> 已連線至資料庫`;
+    });
 
-        const savedPurchased = purchasedQtys[k];
-        const currentPurchasedStr = (savedPurchased !== undefined && savedPurchased !== null) ? savedPurchased : "";
-        const effectiveQty = getEffectiveQty(k, item.totalQty);
-        const subtotalLocal = numericPrice * effectiveQty;
+    window.updatePlatformStyle = function() {
+      const select = document.getElementById("cust-platform");
+      if (!select) return;
+      const val = select.value;
 
-        // 取得對應商品的庫存值
-        const prodId = findProductIdByNameAndSpec(item.name, item.spec);
-        let stockValStr = "";
-        if (prodId && catalog[prodId]) {
-          const s = catalog[prodId].stock;
-          if (s !== undefined && s !== null) stockValStr = s;
-        }
+      select.style.color = "#FFFFFF";
 
-        let purchasedInputStyle = "background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;";
-        if (currentPurchasedStr !== "") {
-          const pNum = Number(currentPurchasedStr);
-          if (pNum >= item.totalQty) {
-            purchasedInputStyle = "background-color: rgba(143, 158, 147, 0.18); border: 1px solid #8F9E93; color: #4E5C53;";
-          } else {
-            purchasedInputStyle = "background-color: rgba(176, 136, 137, 0.18); border: 1px solid #B08889; color: #6B4B4C;";
-          }
-        }
-
-        const prices = Object.keys(item.priceBreakdown).sort((a, b) => Number(a) - Number(b));
-        const priceBadges = prices.map(p => {
-          const count = item.priceBreakdown[p];
-          if (count === 0) return "";
-          return `<span class="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-[#EFECE9] text-[#7A726E]">NT$${p} ×${count}</span>`;
-        }).filter(Boolean).join(" ");
-
-        const tr = document.createElement("tr");
-        tr.className = `${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors cursor-grab active:cursor-grabbing`;
-        tr.draggable = true;
-        tr.dataset.key = k;
-
-        tr.addEventListener("dragstart", (e) => {
-          draggedProcurementKey = k;
-          e.dataTransfer.effectAllowed = "move";
-          tr.classList.add("opacity-40");
-        });
-
-        tr.addEventListener("dragend", () => {
-          tr.classList.remove("opacity-40");
-          draggedProcurementKey = null;
-        });
-
-        tr.addEventListener("dragover", (e) => e.preventDefault());
-
-        tr.addEventListener("drop", (e) => {
-          e.preventDefault();
-          if (draggedProcurementKey && draggedProcurementKey !== k) {
-            reorderProcurement(draggedProcurementKey, k, sortedKeys);
-          }
-        });
-
-        tr.innerHTML = `
-          <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm"></i></td>
-          <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleProcurementChecked('${k}', this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
-          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${item.name}</td>
-          <td class="p-2 sm:p-3 space-y-1">
-            <div class="text-[#7A726E]">${item.spec || '-'}</div>
-            <div class="flex flex-wrap gap-1">${priceBadges}</div>
-          </td>
-          <td class="p-2 sm:p-3 text-right font-bold text-[#7A726E]" id="qty-${k}">${item.totalQty}</td>
-          <td class="p-2 sm:p-3 text-right">
-            <input type="number" min="0" id="input-stock-${k}" placeholder="不限" value="${stockValStr}" 
-              onfocus="activeStockKey='${k}'" 
-              onblur="onStockBlur('${k}', '${item.name}', '${item.spec || ''}', this.value)" 
-              oninput="updateProductStockByRow('${k}', '${item.name}', '${item.spec || ''}', this.value)" 
-              style="background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;"
-              class="w-20 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
-          </td>
-          <td class="p-2 sm:p-3 text-right">
-            <input type="number" min="0" id="input-purchased-${k}" placeholder="未填" value="${currentPurchasedStr}" 
-              onfocus="activePurchasedKey='${k}'" 
-              onblur="onPurchasedBlur('${k}', this.value)" 
-              oninput="updatePurchasedQty('${k}', this.value)" 
-              style="${purchasedInputStyle}"
-              class="w-20 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
-          </td>
-          <td class="p-2 sm:p-3 text-right">
-            <input type="number" id="input-price-${k}" placeholder="單價" value="${currentLocalPrice}" 
-              onfocus="activeInputKey='${k}'" 
-              onblur="onPriceBlur('${k}', this.value)" 
-              oninput="updateLocalPrice('${k}', this.value)" 
-              class="w-20 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none">
-          </td>
-          <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${currencySymbol} ${subtotalLocal.toLocaleString()}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      calculateTotals(map);
-    };
-
-    function reorderProcurement(draggedKey, targetKey, currentKeys) {
-      const keys = [...currentKeys];
-      const dragIdx = keys.indexOf(draggedKey);
-      const targetIdx = keys.indexOf(targetKey);
-      if (dragIdx < 0 || targetIdx < 0) return;
-      keys.splice(dragIdx, 1);
-      keys.splice(targetIdx, 0, draggedKey);
-      customProcurementOrder = keys;
-      set(ref(db, "procurement_custom_order"), keys);
-    }
-
-    window.calculateTotals = function(map) {
-      const localTotalEl = document.getElementById("procurement-local-total");
-      const twdTotalEl = document.getElementById("procurement-twd-total");
-      const currencySymbol = document.getElementById("currency-symbol")?.value || "JP¥";
-      const currencyRate = parseFloat(document.getElementById("currency-rate")?.value) || 0.21;
-      let grandLocalTotal = 0;
-
-      if (map) {
-        Object.keys(map).forEach(k => {
-          const price = parseFloat(localPrices[k]) || 0;
-          const effQty = getEffectiveQty(k, map[k].totalQty);
-          grandLocalTotal += price * effQty;
-        });
+      if (val === "Threads") {
+        select.style.backgroundColor = "#3A3837";
+      } else if (val === "IG") {
+        select.style.backgroundColor = "#B08889";
+      } else if (val === "FB") {
+        select.style.backgroundColor = "#6C7D8E";
       } else {
-        Object.keys(localPrices).forEach(k => {
-          const price = parseFloat(localPrices[k]) || 0;
-          const qtyEl = document.getElementById(`qty-${k}`);
-          if (qtyEl) {
-            const demandQty = parseInt(qtyEl.innerText) || 0;
-            const effQty = getEffectiveQty(k, demandQty);
-            grandLocalTotal += price * effQty;
-          }
-        });
-      }
-
-      if (localTotalEl) localTotalEl.innerText = `${currencySymbol} ${grandLocalTotal.toLocaleString()}`;
-      if (twdTotalEl) twdTotalEl.innerText = `NT$ ${Math.round(grandLocalTotal * currencyRate).toLocaleString()}`;
-    };
-
-    // 即時更新商品庫存
-    let stockSaveTimer = {};
-    window.updateProductStockByRow = function(key, name, spec, val) {
-      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10));
-      const prodId = findProductIdByNameAndSpec(name, spec);
-      if (prodId) {
-        if (stockSaveTimer[key]) clearTimeout(stockSaveTimer[key]);
-        stockSaveTimer[key] = setTimeout(() => {
-          update(ref(db, `catalog/${prodId}`), { stock: numericVal });
-        }, 600);
+        select.style.backgroundColor = "#8F9E93";
       }
     };
 
-    window.onStockBlur = function(key, name, spec, val) {
-      activeStockKey = null;
-      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10));
-      const prodId = findProductIdByNameAndSpec(name, spec);
-      if (prodId) {
-        update(ref(db, `catalog/${prodId}`), { stock: numericVal });
-      }
+    window.filterClientCategory = function(cat) {
+      currentCategoryFilter = cat;
+      renderCategories();
+      renderCatalog();
     };
 
-    let purchasedSaveTimer = {};
-    window.updatePurchasedQty = function(key, val) {
-      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10));
-      purchasedQtys[key] = numericVal;
-      calculateTotals();
-      renderQueue();
-      if (purchasedSaveTimer[key]) clearTimeout(purchasedSaveTimer[key]);
-      purchasedSaveTimer[key] = setTimeout(() => {
-        set(ref(db, `procurement_purchased_qty/${key}`), numericVal);
-      }, 600);
-    };
-
-    window.onPurchasedBlur = function(key, val) {
-      activePurchasedKey = null;
-      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10));
-      set(ref(db, `procurement_purchased_qty/${key}`), numericVal);
-      renderQueue();
-    };
-
-    let priceSaveTimer = {};
-    window.updateLocalPrice = function(key, val) {
-      const numericVal = (val === "" || val === null) ? null : parseFloat(val);
-      localPrices[key] = numericVal;
-      calculateTotals();
-      if (priceSaveTimer[key]) clearTimeout(priceSaveTimer[key]);
-      priceSaveTimer[key] = setTimeout(() => {
-        set(ref(db, `procurement_local_prices/${key}`), numericVal);
-      }, 800);
-    };
-
-    window.onPriceBlur = function(key, val) {
-      activeInputKey = null;
-      const numericVal = (val === "" || val === null) ? null : parseFloat(val);
-      set(ref(db, `procurement_local_prices/${key}`), numericVal);
-    };
-
-    function getPlatformBadge(platform) {
-      const p = (platform || '').trim().toUpperCase();
-      let bgColor = p === "THREADS" ? "#3A3837" : (p === "IG" ? "#B08889" : (p === "FB" ? "#6C7D8E" : "#8F9E93"));
-      return `<span style="background-color: ${bgColor} !important; color: #FFFFFF !important;" class="px-2.5 py-1 rounded-lg text-xs font-semibold inline-block">${platform || 'LINE'}</span>`;
-    }
-
-    function renderQueue() {
-      const tbody = document.getElementById("queue-tbody");
-      const grandTotalEl = document.getElementById("queue-grand-total");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-
-      const allocatedOrders = computeOrderAllocations();
-      let grandAllocatedTotal = 0;
-
-      allocatedOrders.forEach((o, index) => {
-        const details = (o.allocatedItems || []).map(i => `${i.name} ${i.spec ? '(' + i.spec + ')' : ''} x${i.reqQty}`).join("<br>");
-        const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${o.phone}<br>🏠 ${o.address}</span>` : '';
-        
-        grandAllocatedTotal += o.allocatedTotal;
-        const safeName = (o.customerName || '').replace(/'/g, "\\'");
-
-        const tr = document.createElement("tr");
-        tr.className = "hover:bg-white transition-colors";
-        tr.innerHTML = `
-          <td class="p-2 sm:p-3 text-center font-bold text-xs text-[#7A726E]">#${index + 1}</td>
-          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${o.createdAtStr || ''}</td>
-          <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
-          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${o.customerName || ''}${contactInfo}</td>
-          <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
-          <td class="p-2 sm:p-3 text-right font-bold text-[#B08889]">NT$ ${o.allocatedTotal.toLocaleString()}</td>
-          <td class="p-2 sm:p-3 text-center">
-            <button type="button" onclick="deleteOrder(event, '${o.id}', '${safeName}')" class="p-1.5 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandAllocatedTotal.toLocaleString()}`;
-    }
-
-    window.filterAdminCategory = function(cat) {
-      currentAdminCategoryFilter = cat;
-      renderProducts();
-    };
-
-    window.quickChangeCategory = function(id, currentCategory) {
-      let newCat = prompt("請輸入或選擇要更改的分類名稱：", currentCategory);
-      if (newCat !== null) {
-        newCat = newCat.trim() || "未分類";
-        update(ref(db, `catalog/${id}`), { category: newCat });
-      }
-    };
-
-    function renderProducts() {
-      const grid = document.getElementById("admin-product-grid");
-      const filterContainer = document.getElementById("admin-category-filters");
-      if (!grid) return;
-      grid.innerHTML = "";
+    function renderCategories() {
+      const container = document.getElementById("client-category-filters");
+      if (!container) return;
 
       const categories = new Set(["全部"]);
-      Object.values(catalog).forEach(item => {
+      Object.values(catalogProducts).forEach(item => {
         if (item.category) categories.add(item.category.trim());
       });
 
-      if (filterContainer) {
-        filterContainer.innerHTML = "";
-        categories.forEach(cat => {
-          const isActive = currentAdminCategoryFilter === cat;
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.innerText = cat;
-          btn.onclick = () => filterAdminCategory(cat);
-          btn.className = `px-3 py-1 rounded-xl text-xs font-bold transition-all ${isActive ? 'bg-[#B08889] text-white shadow-sm' : 'bg-white text-[#7A726E] border border-[#D5D0CC]'}`;
-          filterContainer.appendChild(btn);
-        });
-      }
+      container.innerHTML = "";
+      categories.forEach(cat => {
+        const isActive = currentCategoryFilter === cat;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.innerText = cat;
+        btn.onclick = () => filterClientCategory(cat);
+        btn.className = `px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${isActive ? 'bg-[#B08889] text-white shadow-sm' : 'bg-[#F8F6F4] text-[#7A726E] border border-[#D5D0CC] hover:bg-white'}`;
+        container.appendChild(btn);
+      });
+    }
 
-      const sortedIds = Object.keys(catalog).sort((a, b) => (catalog[a].order ?? 9999) - (catalog[b].order ?? 9999));
+    function renderCatalog() {
+      const grid = document.getElementById("customer-product-grid");
+      grid.innerHTML = "";
+      
+      const sortedIds = Object.keys(catalogProducts).sort((a, b) => {
+        return (catalogProducts[a].order ?? 9999) - (catalogProducts[b].order ?? 9999);
+      });
 
       sortedIds.forEach(id => {
-        const item = catalog[id];
+        const item = catalogProducts[id];
         const itemCategory = (item.category || '未分類').trim();
-        if (currentAdminCategoryFilter !== "全部" && itemCategory !== currentAdminCategoryFilter) return;
+        if (currentCategoryFilter !== "全部" && itemCategory !== currentCategoryFilter) {
+          return;
+        }
 
-        const isOutOfStock = item.isOutOfStock || false;
-        const stockText = (item.stock !== undefined && item.stock !== "" && item.stock !== null) ? `庫存：${item.stock}` : `庫存：不限`;
-        const safeProdName = (item.name || '').replace(/'/g, "\\'");
+        const qty = currentCart[id] || 0;
+        const availableStock = getAvailableStock(item);
+        
+        // 沒填庫存、庫存 <= 0 或手動設為完售，一律視為無現貨（灰色不可點選）
+        const isOutOfStock = item.isOutOfStock || availableStock <= 0;
 
         const card = document.createElement("div");
-        card.className = `border border-[#D5D0CC] rounded-2xl p-3.5 sm:p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between ${isOutOfStock ? 'opacity-80' : ''}`;
+        card.className = `bg-[#F8F6F4] p-3.5 sm:p-4 rounded-2xl border border-[#D5D0CC] shadow-sm flex flex-col justify-between transition-all ${isOutOfStock ? 'opacity-60 bg-gray-100 border-gray-300' : ''}`;
         
+        const specTag = item.spec && item.spec.trim() !== '' ? `<span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec}</span>` : '';
+        const stockBadgeText = isOutOfStock ? '已完售' : `剩餘 ${availableStock}`;
+
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-center mb-2">
-              <button type="button" onclick="quickChangeCategory('${id}', '${itemCategory}')" class="text-[11px] font-bold px-2.5 py-1 bg-[#EFECE9] text-[#7A726E] rounded-lg">
-                <i class="fa-solid fa-tag text-[10px]"></i> ${itemCategory}
-              </button>
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
-                  ${isOutOfStock ? '已完售' : stockText}
-                </span>
-              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 bg-[#EFECE9] text-[#7A726E] rounded-md">${itemCategory}</span>
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+                ${stockBadgeText}
+              </span>
             </div>
-            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1"><img src="${item.image}" class="w-full h-full object-contain rounded-lg"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3">無圖片</div>`}
-            <div class="font-bold text-sm text-[#4A4543]">${item.name} ${item.spec ? '(' + item.spec + ')' : ''}</div>
-            <div class="text-[#B08889] font-semibold text-sm mt-1">NT$ ${item.price}</div>
+            <div class="relative w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1">
+              ${isOutOfStock ? `<div class="absolute inset-0 bg-gray-900 bg-opacity-40 z-10 flex items-center justify-center"><span class="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md tracking-wider">已完售</span></div>` : ''}
+              ${item.image ? `<img src="${item.image}" class="w-full h-full object-contain rounded-lg ${isOutOfStock ? 'filter grayscale' : ''}" onerror="this.parentElement.style.display='none'">` : `<div class="w-full h-full flex items-center justify-center text-xs text-[#A39E9A] ${isOutOfStock ? 'filter grayscale' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
+            </div>
+            <div class="flex justify-between items-start gap-2">
+              <h4 class="font-bold ${isOutOfStock ? 'text-gray-400' : 'text-[#4A4543]'} text-sm sm:text-base">${item.name}</h4>
+              ${specTag}
+            </div>
+            <p class="text-sm sm:text-base font-bold ${isOutOfStock ? 'text-gray-400 line-through' : 'text-[#B08889]'} mt-1.5">NT$ ${item.price}</p>
           </div>
-          <div class="flex gap-2 pt-2 border-t border-[#EFECE9]">
-            <button type="button" onclick="editProduct('${id}')" class="flex-1 py-1.5 bg-[#EFECE9] text-[#4A4543] text-xs font-bold rounded-xl">修改</button>
-            <button type="button" onclick="deleteProduct(event, '${id}', '${safeProdName}')" class="flex-1 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-xl">刪除</button>
+          <div class="flex items-center justify-between mt-3 sm:mt-4 pt-3 border-t border-[#EFECE9]">
+            <span class="text-xs text-[#A39E9A]">數量</span>
+            <div class="flex items-center gap-2">
+              <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="updateCart('${id}', -1)" class="w-8 h-8 rounded-xl border border-[#D5D0CC] bg-white font-bold text-[#7A726E] hover:bg-[#EFECE9] disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm">-</button>
+              <span class="w-6 text-center font-bold ${isOutOfStock ? 'text-gray-400' : 'text-[#4A4543]'} text-sm">${qty}</span>
+              <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="updateCart('${id}', 1)" class="w-8 h-8 rounded-xl bg-[#8F9E93] disabled:bg-gray-300 disabled:cursor-not-allowed font-bold text-white transition-all text-sm">+</button>
+            </div>
           </div>
         `;
         grid.appendChild(card);
       });
     }
 
-    function processSquareImage(file, callback) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const targetSize = 500;
-          const canvas = document.createElement("canvas");
-          canvas.width = targetSize;
-          canvas.height = targetSize;
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(0, 0, targetSize, targetSize);
-          let drawWidth, drawHeight, offsetX, offsetY;
-          if (img.width > img.height) {
-            drawWidth = targetSize;
-            drawHeight = (img.height / img.width) * targetSize;
-            offsetX = 0;
-            offsetY = (targetSize - drawHeight) / 2;
-          } else {
-            drawHeight = targetSize;
-            drawWidth = (img.width / img.height) * targetSize;
-            offsetX = (targetSize - drawWidth) / 2;
-            offsetY = 0;
-          }
-          ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-          callback(canvas.toDataURL("image/jpeg", 0.85));
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
+    window.updateCart = function(id, change) {
+      const item = catalogProducts[id];
+      if (!item) return;
+      const availableStock = getAvailableStock(item);
+      if (item.isOutOfStock || availableStock <= 0) return;
+
+      const currentQty = currentCart[id] || 0;
+      const next = currentQty + change;
+
+      if (change > 0 && next > availableStock) {
+        alert(`此商品目前現貨僅剩 ${availableStock} 件`);
+        return;
+      }
+
+      if (next <= 0) delete currentCart[id];
+      else currentCart[id] = next;
+      
+      renderCatalog();
+      renderCart();
+    };
+
+    function hasCookieOrder() {
+      for (const id in currentCart) {
+        const item = catalogProducts[id];
+        if (item && item.category && item.category.includes("餅乾")) {
+          return true;
+        }
+      }
+      return false;
     }
 
-    window.saveProduct = function(e) {
-      e.preventDefault();
-      const editId = document.getElementById("edit-id").value;
-      const name = document.getElementById("p-name").value.trim();
-      const spec = document.getElementById("p-spec").value.trim();
-      const price = Number(document.getElementById("p-price").value);
-      const category = document.getElementById("p-category").value.trim() || "未分類";
-      const isOutOfStock = document.getElementById("p-status").value === "out_of_stock";
-      const fileInput = document.getElementById("p-image-file");
+    function renderCart() {
+      const cartList = document.getElementById("cart-items-list");
+      const totalEl = document.getElementById("cart-total-price");
+      const submitBtn = document.getElementById("btn-submit-order");
+      const floatingCountEl = document.getElementById("floating-cart-count");
+      const platformContainer = document.getElementById("platform-container");
+      const cookieFields = document.getElementById("cookie-fields");
+      const phoneInput = document.getElementById("cust-phone");
+      const addressInput = document.getElementById("cust-address");
+      
+      cartList.innerHTML = "";
+      let total = 0, count = 0;
 
-      const saveData = (imageUrl) => {
-        const payload = { name, spec, price, category, isOutOfStock };
-        if (imageUrl !== undefined) payload.image = imageUrl;
-
-        if (editId) {
-          update(ref(db, `catalog/${editId}`), payload).then(() => resetForm());
-        } else {
-          payload.image = imageUrl || "";
-          payload.stock = null; // 預設庫存不限
-          payload.order = Object.keys(catalog).length;
-          set(push(ref(db, "catalog")), payload).then(() => resetForm());
-        }
-      };
-
-      if (fileInput.files && fileInput.files[0]) {
-        processSquareImage(fileInput.files[0], (squareBase64) => saveData(squareBase64));
-      } else {
-        saveData(editId ? undefined : "");
+      const keys = Object.keys(currentCart);
+      if (keys.length === 0) {
+        cartList.innerHTML = `<p class="text-[#A39E9A] text-center py-6 text-xs">尚未選擇商品</p>`;
+        totalEl.innerText = "NT$ 0";
+        submitBtn.disabled = true;
+        submitBtn.classList.add("opacity-40");
+        submitBtn.innerText = "確認喊單排隊";
+        document.getElementById("cart-item-count").innerText = `0 件`;
+        if (floatingCountEl) floatingCountEl.innerText = "0";
+        if (platformContainer) platformContainer.style.display = "block";
+        if (cookieFields) cookieFields.classList.add("hidden");
+        if (phoneInput) phoneInput.required = false;
+        if (addressInput) addressInput.required = false;
+        return;
       }
-    };
 
-    window.editProduct = function(id) {
-      const item = catalog[id];
-      if (!item) return;
-      document.getElementById("edit-id").value = id;
-      document.getElementById("p-name").value = item.name;
-      document.getElementById("p-spec").value = item.spec || "";
-      document.getElementById("p-price").value = item.price;
-      document.getElementById("p-category").value = item.category || "未分類";
-      document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
-      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
-      document.getElementById("submit-btn").innerText = "確認修改";
-      document.getElementById("cancel-edit-btn").classList.remove("hidden");
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+      keys.forEach(id => {
+        const item = catalogProducts[id];
+        const qty = currentCart[id];
+        total += item.price * qty;
+        count += qty;
+        const specText = item.spec && item.spec.trim() !== '' ? `<span class="text-xs text-[#A39E9A]">(${item.spec})</span> ` : '';
+        cartList.innerHTML += `<div class="py-2.5 flex justify-between items-center text-sm"><div><p class="font-medium text-[#4A4543]">${item.name} ${specText}</p><p class="text-xs text-[#A39E9A]">x ${qty}</p></div><span class="font-bold text-[#4A4543]">NT$ ${item.price * qty}</span></div>`;
+      });
 
-    window.resetForm = function() {
-      document.getElementById("edit-id").value = "";
-      document.getElementById("p-name").value = "";
-      document.getElementById("p-spec").value = "";
-      document.getElementById("p-price").value = "";
-      document.getElementById("p-category").value = "";
-      document.getElementById("p-status").value = "available";
-      document.getElementById("p-image-file").value = "";
-      document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-gift text-[#B08889]"></i> 新增上架商品`;
-      document.getElementById("submit-btn").innerText = "確認上架";
-      document.getElementById("cancel-edit-btn").classList.add("hidden");
+      totalEl.innerText = `NT$ ${total}`;
+      document.getElementById("cart-item-count").innerText = `${count} 件`;
+      if (floatingCountEl) floatingCountEl.innerText = `${count}`;
+
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("opacity-40");
+
+      if (hasCookieOrder()) {
+        if (platformContainer) platformContainer.style.display = "none";
+        if (cookieFields) cookieFields.classList.remove("hidden");
+        if (phoneInput) phoneInput.required = true;
+        if (addressInput) addressInput.required = true;
+        submitBtn.innerText = "確認喊單並聯繫官方 LINE 回覆";
+      } else {
+        if (platformContainer) platformContainer.style.display = "block";
+        if (cookieFields) cookieFields.classList.add("hidden");
+        if (phoneInput) phoneInput.required = false;
+        if (addressInput) addressInput.required = false;
+        submitBtn.innerText = "確認喊單排隊";
+      }
+    }
+
+    window.submitCustomerOrder = function(e) {
+      e.preventDefault();
+      const name = document.getElementById("cust-name").value.trim();
+      if (!name) return alert("請填寫收件人姓名");
+
+      const isCookie = hasCookieOrder();
+      const phone = isCookie ? document.getElementById("cust-phone").value.trim() : "";
+      const address = isCookie ? document.getElementById("cust-address").value.trim() : "";
+
+      if (isCookie && (!phone || !address)) {
+        return alert("請填寫完整的聯繫電話與收件地址！");
+      }
+
+      const items = Object.keys(currentCart).map(id => ({
+        name: catalogProducts[id].name,
+        spec: catalogProducts[id].spec || "",
+        price: catalogProducts[id].price,
+        qty: currentCart[id]
+      }));
+
+      const totalAmount = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+      const platform = isCookie ? "LINE" : document.getElementById("cust-platform").value;
+
+      set(push(ref(db, "orders")), {
+        platform: platform,
+        customerName: name,
+        phone: phone,
+        address: address,
+        items,
+        totalAmount,
+        timestamp: Date.now(),
+        createdAtStr: new Date().toLocaleString("zh-TW")
+      }).then(() => {
+        if (isCookie) {
+          let textMsg = `【奶油雜貨店 餅乾訂購明細】\n`;
+          textMsg += `收件人：${name}\n`;
+          textMsg += `聯絡電話：${phone}\n`;
+          textMsg += `收件地址：${address}\n`;
+          textMsg += `--------------------\n`;
+          items.forEach(i => {
+            const s = i.spec ? `(${i.spec})` : '';
+            textMsg += `${i.name} ${s} x ${i.qty} ($${i.price * i.qty})\n`;
+          });
+          textMsg += `--------------------\n`;
+          textMsg += `總金額：NT$ ${totalAmount}\n`;
+          textMsg += `再麻煩闆娘登記，提供匯款資訊，謝謝`;
+
+          navigator.clipboard.writeText(textMsg).then(() => {
+            alert("訂單已送出並複製明細！即將前往官方 LINE，請在對話框中「貼上」傳送給闆娘即可。");
+            window.location.href = "https://lin.ee/7sBv1xFJ";
+          }).catch(() => {
+            alert("訂單已送出！即將前往官方 LINE。");
+            window.location.href = "https://lin.ee/7sBv1xFJ";
+          });
+        } else {
+          alert("喊單排隊成功！有買到後闆娘會通知您。");
+          currentCart = {};
+          renderCatalog();
+          renderCart();
+        }
+      }).catch(err => {
+        alert("送出失敗：" + err.message);
+      });
     };
   </script>
 </body>
