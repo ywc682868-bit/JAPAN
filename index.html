@@ -80,7 +80,7 @@
       
       <div class="pt-2 border-t border-[#EFECE9] space-y-1 text-xs text-[#7A726E]">
         <p><span class="font-semibold text-[#4A4543]">結單方式：</span>賣貨便、7-11、郵局</p>
-        <p><span class="font-semibold text-[#4A4543]">運費及包材：</span>皆為60-200，依商品多寡決定</p>
+        <p><span class="font-semibold text-[#4A4543]">運費及包材：</span>60-200，依商品多寡決定</p>
         <p class="pt-1 text-[#4A4543]">小本經營，也都需要花時間找包材寄出商品，<br class="sm:hidden"><span class="font-bold text-red-600">若無法接受請勿購買！</span></p>
       </div>
     </div>
@@ -114,7 +114,8 @@
             <p class="text-[#A39E9A] text-center py-6 text-xs">尚未選擇商品</p>
           </div>
           <form onsubmit="submitCustomerOrder(event)" class="space-y-3.5 pt-3 border-t border-[#EFECE9]">
-            <div>
+            <!-- 平台選單：一般商品顯示，餅乾類商品自動隱藏 -->
+            <div id="platform-container">
               <label class="block text-xs font-semibold text-[#7A726E] mb-1">喊單平台</label>
               <select id="cust-platform" onchange="updatePlatformStyle()" class="w-full text-sm p-2.5 rounded-xl focus:outline-none font-bold transition-all border border-[#D5D0CC]">
                 <option value="LINE" class="bg-white text-[#4A4543]">LINE</option>
@@ -301,7 +302,7 @@
     function hasCookieOrder() {
       for (const id in currentCart) {
         const item = catalogProducts[id];
-        if (item && item.category && item.category.trim() === "餅乾訂購") {
+        if (item && item.category && item.category.includes("餅乾")) {
           return true;
         }
       }
@@ -313,6 +314,7 @@
       const totalEl = document.getElementById("cart-total-price");
       const submitBtn = document.getElementById("btn-submit-order");
       const floatingCountEl = document.getElementById("floating-cart-count");
+      const platformContainer = document.getElementById("platform-container");
       cartList.innerHTML = "";
       let total = 0, count = 0;
 
@@ -325,6 +327,7 @@
         submitBtn.innerText = "確認喊單排隊";
         document.getElementById("cart-item-count").innerText = `0 件`;
         if (floatingCountEl) floatingCountEl.innerText = "0";
+        if (platformContainer) platformContainer.style.display = "block";
         return;
       }
 
@@ -345,10 +348,12 @@
       submitBtn.disabled = false;
       submitBtn.classList.remove("opacity-40");
 
-      // 如果購物車包含「餅乾訂購」分類，按鈕文字切換為 LINE 結單
+      // 如果選購的商品包含「餅乾」，隱藏平台選單，並將按鈕文字改為聯繫官方 LINE
       if (hasCookieOrder()) {
+        if (platformContainer) platformContainer.style.display = "none";
         submitBtn.innerText = "確認喊單並聯繫官方 LINE 回覆";
       } else {
+        if (platformContainer) platformContainer.style.display = "block";
         submitBtn.innerText = "確認喊單排隊";
       }
     }
@@ -356,7 +361,6 @@
     window.submitCustomerOrder = function(e) {
       e.preventDefault();
       const name = document.getElementById("cust-name").value.trim();
-      const platform = document.getElementById("cust-platform").value;
       if (!name) return alert("請填寫買家暱稱 / ID");
 
       const items = Object.keys(currentCart).map(id => ({
@@ -367,8 +371,10 @@
       }));
 
       const totalAmount = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+      const isCookie = hasCookieOrder();
+      const platform = isCookie ? "LINE" : document.getElementById("cust-platform").value;
 
-      // 無論哪種商品皆同步備份訂單至後台資料庫
+      // 無論哪種商品，皆同步備份訂單至後台資料庫
       set(push(ref(db, "orders")), {
         platform: platform,
         customerName: name,
@@ -377,10 +383,9 @@
         timestamp: Date.now(),
         createdAtStr: new Date().toLocaleString("zh-TW")
       }).then(() => {
-        if (hasCookieOrder()) {
-          // 若包含餅乾訂購，組合明細並跳轉至官方 LINE
+        if (isCookie) {
+          // 若包含餅乾類商品，組合明細並直接帶入剪貼簿，跳轉至官方 LINE
           let textMsg = `【奶油雜貨店 餅乾喊單明細】\n`;
-          textMsg += `平台：${platform}\n`;
           textMsg += `買家：${name}\n`;
           textMsg += `--------------------\n`;
           items.forEach(i => {
