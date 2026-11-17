@@ -87,7 +87,7 @@
     <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-x-auto scrollbar-none shadow-sm p-1 gap-1">
       <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl transition-all whitespace-nowrap">採購統計</button>
       <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">排隊清單</button>
-      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">商品管理</button>
+      <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">商品與分類管理</button>
     </div>
 
     <!-- 1. 採購總統計表 -->
@@ -184,18 +184,23 @@
       </div>
     </div>
 
-    <!-- 3. 商品定價與縮圖管理 -->
+    <!-- 3. 商品與分類管理 -->
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div class="border border-[#D5D0CC] p-4 sm:p-5 rounded-2xl bg-[#FAF9F7] space-y-3 sm:space-y-4">
         <h3 id="form-title" class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-2"><i class="fa-solid fa-gift text-[#B08889]"></i>新增上架商品</h3>
-        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-center">
+        <form onsubmit="saveProduct(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-center">
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="text" id="p-spec" placeholder="規格/顏色 (可留空)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="number" id="p-price" required placeholder="預設售價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="text" id="p-category" required list="category-list" placeholder="團購分類/專案名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <datalist id="category-list">
+            <option value="餅乾訂購">
+            <option value="11月東京連線">
+          </datalist>
           <select id="p-status" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
-            <option value="available">可下單喊單</option>
-            <option value="out_of_stock">無庫存/停止喊單</option>
+            <option value="available">正常供貨中</option>
+            <option value="out_of_stock">已完售/停止喊單</option>
           </select>
           <div>
             <label class="block text-xs text-[#7A726E] mb-1">上傳圖片</label>
@@ -206,6 +211,12 @@
             <button type="button" id="cancel-edit-btn" onclick="resetForm()" class="hidden px-3 py-2.5 bg-[#D5D0CC] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
           </div>
         </form>
+      </div>
+
+      <!-- 管理後台篩選器 -->
+      <div class="flex items-center gap-2 flex-wrap bg-[#EFECE9] p-3 rounded-2xl">
+        <span class="text-xs font-bold text-[#7A726E]">篩選顯示分類：</span>
+        <div id="admin-category-filters" class="flex flex-wrap gap-1.5"></div>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" id="admin-product-grid"></div>
@@ -237,6 +248,7 @@
     let draggedProcurementKey = null;
     let activeInputKey = null;
     let activePurchasedKey = null;
+    let currentAdminCategoryFilter = "全部";
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -326,7 +338,6 @@
       }
     };
 
-    // 核心配貨演算法：依排隊清單順序分配已採購數量
     function computeOrderAllocations() {
       const remainingPool = {};
       const hasLimit = {};
@@ -440,7 +451,6 @@
         const effectiveQty = getEffectiveQty(k, item.totalQty);
         const subtotalLocal = numericPrice * effectiveQty;
 
-        // 狀態顏色判斷（改用純內嵌樣式，避免被 Tailwind 的 !important 覆蓋導致字體與背景同色）
         let purchasedInputStyle = "background-color: #FFFFFF; border: 1px solid #D5D0CC; color: #4A4543;";
         if (currentPurchasedStr !== "") {
           const pNum = Number(currentPurchasedStr);
@@ -773,19 +783,49 @@
       update(ref(db), updates);
     }
 
+    window.filterAdminCategory = function(cat) {
+      currentAdminCategoryFilter = cat;
+      renderProducts();
+    };
+
     function renderProducts() {
       const grid = document.getElementById("admin-product-grid");
+      const filterContainer = document.getElementById("admin-category-filters");
       if (!grid) return;
       grid.innerHTML = "";
+
+      // 收集所有分類
+      const categories = new Set(["全部"]);
+      Object.values(catalog).forEach(item => {
+        if (item.category) categories.add(item.category.trim());
+      });
+
+      if (filterContainer) {
+        filterContainer.innerHTML = "";
+        categories.forEach(cat => {
+          const isActive = currentAdminCategoryFilter === cat;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.innerText = cat;
+          btn.onclick = () => filterAdminCategory(cat);
+          btn.className = `px-3 py-1 rounded-xl text-xs font-bold transition-all ${isActive ? 'bg-[#B08889] text-white shadow-sm' : 'bg-white text-[#7A726E] border border-[#D5D0CC] hover:bg-[#FAF9F7]'}`;
+          filterContainer.appendChild(btn);
+        });
+      }
 
       const sortedIds = Object.keys(catalog).sort((a, b) => (catalog[a].order ?? 9999) - (catalog[b].order ?? 9999));
 
       sortedIds.forEach(id => {
         const item = catalog[id];
+        const itemCategory = (item.category || '未分類').trim();
+        if (currentAdminCategoryFilter !== "全部" && itemCategory !== currentAdminCategoryFilter) {
+          return;
+        }
+
         const isOutOfStock = item.isOutOfStock || false;
         const safeProdName = (item.name || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
         const card = document.createElement("div");
-        card.className = `border border-[#D5D0CC] rounded-2xl p-3.5 sm:p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing ${isOutOfStock ? 'bg-gray-50' : ''}`;
+        card.className = `border border-[#D5D0CC] rounded-2xl p-3.5 sm:p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing ${isOutOfStock ? 'bg-gray-50 opacity-80' : ''}`;
         card.draggable = true;
         card.dataset.id = id;
 
@@ -813,13 +853,16 @@
 
         card.innerHTML = `
           <div>
-            <div class="flex justify-between items-center mb-2 text-[#A39E9A]">
-              <i class="fa-solid fa-grip-vertical text-sm" title="按住拖曳排序"></i>
-              <button type="button" onclick="toggleStockStatus('${id}', ${!isOutOfStock})" class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
-                ${isOutOfStock ? '已停售/無庫存' : '正常供貨中'}
-              </button>
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-[11px] font-bold px-2 py-0.5 bg-[#EFECE9] text-[#7A726E] rounded-md">${itemCategory}</span>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="toggleStockStatus('${id}', ${!isOutOfStock})" class="text-xs px-2 py-0.5 rounded-full font-medium ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+                  ${isOutOfStock ? '已完售' : '供應中'}
+                </button>
+                <i class="fa-solid fa-grip-vertical text-sm text-[#A39E9A]" title="按住拖曳排序"></i>
+              </div>
             </div>
-            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1 ${isOutOfStock ? 'filter grayscale opacity-60' : ''}"><img src="${item.image}" class="w-full h-full object-contain rounded-lg pointer-events-none" onerror="this.parentElement.style.display='none'"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3 pointer-events-none ${isOutOfStock ? 'filter grayscale opacity-60' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片</div>`}
+            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1 relative ${isOutOfStock ? 'filter grayscale' : ''}"><img src="${item.image}" class="w-full h-full object-contain rounded-lg pointer-events-none" onerror="this.parentElement.style.display='none'">${isOutOfStock ? '<div class="absolute inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center text-white font-black text-sm tracking-widest">已完售</div>' : ''}</div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3 pointer-events-none relative ${isOutOfStock ? 'filter grayscale' : ''}"><i class="fa-regular fa-image mr-1"></i> 無圖片${isOutOfStock ? '<div class="absolute inset-0 bg-gray-900 bg-opacity-40 flex items-center justify-center text-white font-black text-sm tracking-widest">已完售</div>' : ''}</div>`}
             <div class="font-bold text-sm text-[#4A4543] ${isOutOfStock ? 'text-gray-400' : ''}">${item.name} ${specText}</div>
             <div class="text-[#B08889] font-semibold text-sm mt-1 ${isOutOfStock ? 'text-gray-400 line-through' : ''}">NT$ ${item.price}</div>
           </div>
@@ -919,11 +962,12 @@
       const name = document.getElementById("p-name").value.trim();
       const spec = document.getElementById("p-spec").value.trim();
       const price = Number(document.getElementById("p-price").value);
+      const category = document.getElementById("p-category").value.trim() || "一般商品";
       const isOutOfStock = document.getElementById("p-status").value === "out_of_stock";
       const fileInput = document.getElementById("p-image-file");
 
       const saveData = (imageUrl) => {
-        const payload = { name, spec, price, isOutOfStock };
+        const payload = { name, spec, price, category, isOutOfStock };
         if (imageUrl !== undefined) payload.image = imageUrl;
 
         if (editId) {
@@ -951,6 +995,7 @@
       document.getElementById("p-name").value = item.name;
       document.getElementById("p-spec").value = item.spec || "";
       document.getElementById("p-price").value = item.price;
+      document.getElementById("p-category").value = item.category || "一般商品";
       document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
       document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-pen-to-square text-[#B08889]"></i> 修改商品資料`;
       document.getElementById("submit-btn").innerText = "確認修改";
@@ -963,6 +1008,7 @@
       document.getElementById("p-name").value = "";
       document.getElementById("p-spec").value = "";
       document.getElementById("p-price").value = "";
+      document.getElementById("p-category").value = "";
       document.getElementById("p-status").value = "available";
       document.getElementById("p-image-file").value = "";
       document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-gift text-[#B08889]"></i> 新增上架商品`;
