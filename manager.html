@@ -790,7 +790,6 @@
 
     // 點擊分類標籤直接更換商品分類
     window.quickChangeCategory = function(id, currentCategory) {
-      // 收集系統中目前所有出現過的分類
       const allCats = new Set(["未分類", "餅乾訂購", "11月東京連線"]);
       Object.values(catalog).forEach(item => {
         if (item.category) allCats.add(item.category.trim());
@@ -1024,7 +1023,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    window.resetForm = function`() {
+    window.resetForm = function() {
       document.getElementById("edit-id").value = "";
       document.getElementById("p-name").value = "";
       document.getElementById("p-spec").value = "";
