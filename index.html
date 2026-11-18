@@ -233,6 +233,20 @@
       return Math.max(0, Number(item.stock) || 0);
     }
 
+    // 依賣場模式判斷商品是否可選購
+    // 連線中：只要「正常供貨中」就能排隊，不看庫存
+    // 結束連線：必須「正常供貨中」且現貨庫存 > 0
+    function isProductOrderable(item) {
+      if (!item || item.isOutOfStock) return false;
+      if (isStockOnlyMode()) return getAvailableStock(item) > 0;
+      return true;
+    }
+
+    // 單一商品可選購的數量上限（連線中不設上限）
+    function getMaxOrderQty(item) {
+      return isStockOnlyMode() ? getAvailableStock(item) : Infinity;
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       updatePlatformStyle();
     });
@@ -301,11 +315,11 @@
     function syncCartWithCatalog() {
       Object.keys(currentCart).forEach(id => {
         const item = catalogProducts[id];
-        const availableStock = getAvailableStock(item);
-        if (!item || item.isOutOfStock || availableStock <= 0) {
+        const maxQty = getMaxOrderQty(item);
+        if (!isProductOrderable(item)) {
           delete currentCart[id];
-        } else if (currentCart[id] > availableStock) {
-          currentCart[id] = availableStock;
+        } else if (currentCart[id] > maxQty) {
+          currentCart[id] = maxQty;
         }
       });
     }
@@ -389,15 +403,22 @@
         const qty = currentCart[id] || 0;
         const availableStock = getAvailableStock(item);
         
-        // 【核心修改】不管是不是連線中，只要後台勾選已完售 (item.isOutOfStock) 或庫存 <= 0，就視為售完
-        const isOutOfStock = item.isOutOfStock || availableStock <= 0;
+        // 連線中：正常供貨即可排隊；結束連線：需有現貨庫存
+        const isOutOfStock = !isProductOrderable(item);
 
         const card = document.createElement("div");
         card.className = `bg-[#F8F6F4] p-3.5 sm:p-4 rounded-2xl border border-[#D5D0CC] shadow-sm flex flex-col justify-between transition-all ${isOutOfStock ? 'opacity-60 bg-gray-100 border-gray-300' : ''}`;
         
         const specTag = item.spec && item.spec.trim() !== '' ? `<span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec}</span>` : '';
-        const soldOutLabel = '已完售';
-        const stockBadgeText = isOutOfStock ? soldOutLabel : (stockMode ? `現貨 ${availableStock}` : `剩餘 ${availableStock}`);
+        const soldOutLabel = item.isOutOfStock ? '已完售' : '無現貨';
+        let stockBadgeText;
+        if (isOutOfStock) {
+          stockBadgeText = soldOutLabel;
+        } else if (stockMode) {
+          stockBadgeText = `現貨 ${availableStock}`;
+        } else {
+          stockBadgeText = availableStock > 0 ? `可排隊・現貨 ${availableStock}` : '可排隊';
+        }
 
         card.innerHTML = `
           <div>
@@ -433,14 +454,14 @@
     window.updateCart = function(id, change) {
       const item = catalogProducts[id];
       if (!item) return;
-      const availableStock = getAvailableStock(item);
-      if (item.isOutOfStock || availableStock <= 0) return;
+      if (!isProductOrderable(item)) return;
 
+      const maxQty = getMaxOrderQty(item);
       const currentQty = currentCart[id] || 0;
       const next = currentQty + change;
 
-      if (change > 0 && next > availableStock) {
-        alert(`此商品目前數量僅剩 ${availableStock} 件`);
+      if (change > 0 && next > maxQty) {
+        alert(`此商品目前現貨僅剩 ${maxQty} 件`);
         return;
       }
 
@@ -544,8 +565,7 @@
 
       for (const id of Object.keys(currentCart)) {
         const prod = catalogProducts[id];
-        const avail = getAvailableStock(prod);
-        if (!prod || prod.isOutOfStock || currentCart[id] > avail) {
+        if (!isProductOrderable(prod) || currentCart[id] > getMaxOrderQty(prod)) {
           alert(`抱歉，「${prod ? prod.name : '該商品'}」狀態已異動，請重新確認。`);
           syncCartWithCatalog();
           renderCatalog();
