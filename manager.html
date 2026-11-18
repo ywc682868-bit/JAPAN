@@ -993,6 +993,90 @@
       if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandAllocatedTotal.toLocaleString()}`;
     }
 
+    // 下載出貨清單 (Excel)：工作表1「訂單總表」一筆訂單一列；工作表2「出貨明細」一個品項一列
+    window.exportToExcel = function() {
+      if (typeof XLSX === "undefined") {
+        alert("Excel 元件尚未載入完成，請重新整理頁面後再試一次。");
+        return;
+      }
+
+      const allocatedOrders = computeOrderAllocations();
+      if (allocatedOrders.length === 0) {
+        alert("目前沒有任何訂單可以匯出。");
+        return;
+      }
+
+      const summaryRows = [];
+      const detailRows = [];
+
+      allocatedOrders.forEach((o, index) => {
+        const items = o.allocatedItems || [];
+        const detailText = items.map(i => {
+          const spec = i.displaySpec ? `(${i.displaySpec})` : "";
+          const allocNote = i.isTracked && i.allocQty !== i.reqQty ? `［實配 ${i.allocQty}］` : "";
+          return `${i.displayName}${spec} x${i.reqQty}${allocNote}`;
+        }).join("\n");
+
+        summaryRows.push({
+          "順位": index + 1,
+          "下單時間": o.createdAtStr || "",
+          "平台": o.platform || "LINE",
+          "訂單類型": o.orderType === "stock_only" ? "現貨" : "連線排隊",
+          "買家/收件人": o.customerName || "",
+          "電話": o.phone || "",
+          "地址": o.address || "",
+          "訂購明細": detailText,
+          "原訂金額": o.originalTotal || 0,
+          "實配金額": o.allocatedTotal || 0
+        });
+
+        items.forEach(i => {
+          const unitPrice = Number(i.price || 0);
+          detailRows.push({
+            "順位": index + 1,
+            "買家/收件人": o.customerName || "",
+            "平台": o.platform || "LINE",
+            "商品名稱": i.displayName || "",
+            "規格": i.displaySpec || "",
+            "單價": unitPrice,
+            "喊單數量": i.reqQty,
+            "實配數量": i.allocQty,
+            "實配小計": i.allocQty * unitPrice,
+            "電話": o.phone || "",
+            "地址": o.address || ""
+          });
+        });
+      });
+
+      const grandTotal = allocatedOrders.reduce((sum, o) => sum + (o.allocatedTotal || 0), 0);
+      summaryRows.push({ "訂購明細": "實配總計", "實配金額": grandTotal });
+
+      const wb = XLSX.utils.book_new();
+      const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+      wsSummary["!cols"] = [
+        { wch: 6 }, { wch: 20 }, { wch: 9 }, { wch: 10 }, { wch: 18 },
+        { wch: 14 }, { wch: 32 }, { wch: 40 }, { wch: 10 }, { wch: 10 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsSummary, "訂單總表");
+
+      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+      wsDetail["!cols"] = [
+        { wch: 6 }, { wch: 18 }, { wch: 9 }, { wch: 24 }, { wch: 14 },
+        { wch: 8 }, { wch: 9 }, { wch: 9 }, { wch: 10 }, { wch: 14 }, { wch: 32 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsDetail, "出貨明細");
+
+      const d = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      const fileName = `奶油雜貨店_出貨清單_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.xlsx`;
+
+      try {
+        XLSX.writeFile(wb, fileName);
+      } catch (err) {
+        alert("下載失敗：" + err.message);
+      }
+    };
+
     window.filterAdminCategory = function(cat) {
       currentAdminCategoryFilter = cat;
       renderProducts();
