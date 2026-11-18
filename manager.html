@@ -82,6 +82,29 @@
       <button onclick="handleLogout()" class="px-3 py-1.5 sm:px-4 sm:py-2 bg-[#E2DEDA] text-[#4A4543] text-xs font-bold rounded-xl transition-all whitespace-nowrap">登出</button>
     </header>
 
+    <!-- 賣場營業模式切換控制列 -->
+    <div class="bg-[#F8F6F4] p-4 sm:p-5 rounded-2xl shadow-sm border border-[#D5D0CC] flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold text-[#4A4543]"><i class="fa-solid fa-store text-[#B08889] mr-1.5"></i>目前賣場模式：</span>
+          <span id="store-mode-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#8F9E93] text-white">讀取中...</span>
+        </div>
+        <p id="store-mode-desc" class="text-xs text-[#7A726E]">正在同步前台連線設定...</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+        <button type="button" id="btn-mode-live" onclick="setStoreMode('live')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-plane-departure"></i> 正在連線中（排隊喊單）
+        </button>
+        <button type="button" id="btn-mode-stock" onclick="setStoreMode('stock_only')" class="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-box-open"></i> 結束連線（現貨下單＋私訊IG）
+        </button>
+        <a href="https://www.instagram.com/beardessert47/" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-[#D5D0CC] text-[#4A4543] hover:bg-[#EFECE9] transition-all flex items-center gap-1.5">
+          <i class="fa-brands fa-instagram text-[#B08889] text-sm"></i> IG 賣場連結
+        </a>
+      </div>
+    </div>
+
     <!-- 標籤導覽 -->
     <div class="flex border border-[#D5D0CC] bg-[#F8F6F4] rounded-2xl overflow-x-auto scrollbar-none shadow-sm p-1 gap-1">
       <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl transition-all whitespace-nowrap">採購與庫存統計</button>
@@ -247,6 +270,8 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
+    const IG_LINK = "https://www.instagram.com/beardessert47/";
+    let storeSettings = { mode: "live", igUrl: IG_LINK };
     let catalog = {}, orders = [], checkedStatus = {}, localPrices = {}, purchasedQtys = {}, customProcurementOrder = [], legacyCategoryOverrides = {};
     let currentProcurementMap = {};
     let draggedProcurementKey = null;
@@ -276,7 +301,47 @@
 
     window.handleLogout = () => signOut(auth);
 
+    // 切換賣場營業模式並寫入 Firebase
+    window.setStoreMode = function(newMode) {
+      const payload = {
+        mode: newMode,
+        igUrl: IG_LINK,
+        updatedAt: Date.now()
+      };
+      set(ref(db, "store_settings"), payload).catch(err => {
+        alert("模式切換失敗：" + err.message);
+      });
+    };
+
+    function renderStoreModeUI() {
+      const badge = document.getElementById("store-mode-badge");
+      const desc = document.getElementById("store-mode-desc");
+      const btnLive = document.getElementById("btn-mode-live");
+      const btnStock = document.getElementById("btn-mode-stock");
+      if (!badge || !btnLive || !btnStock) return;
+
+      const isStockOnly = storeSettings.mode === "stock_only";
+
+      if (isStockOnly) {
+        badge.innerText = "已結束連線・現貨庫存制";
+        badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#B08889] text-white";
+        desc.innerText = "前台僅開放「現貨庫存 > 0」商品下單，買家送出訂單後將顯示「私訊版娘結單」IG 按鈕。";
+        btnLive.className = "flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold border border-[#D5D0CC] bg-white text-[#7A726E] hover:bg-[#EFECE9] transition-all flex items-center justify-center gap-1.5";
+        btnStock.className = "flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold border border-[#B08889] bg-[#B08889] text-white shadow-sm transition-all flex items-center justify-center gap-1.5";
+      } else {
+        badge.innerText = "正在連線中・排隊喊單制";
+        badge.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#8F9E93] text-white";
+        desc.innerText = "前台正常開放所有連線商品排隊喊單，依下單順序自動配貨。";
+        btnLive.className = "flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold border border-[#8F9E93] bg-[#8F9E93] text-white shadow-sm transition-all flex items-center justify-center gap-1.5";
+        btnStock.className = "flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-bold border border-[#D5D0CC] bg-white text-[#7A726E] hover:bg-[#EFECE9] transition-all flex items-center justify-center gap-1.5";
+      }
+    }
+
     function initListeners() {
+      onValue(ref(db, "store_settings"), s => {
+        storeSettings = s.val() || { mode: "live", igUrl: IG_LINK };
+        renderStoreModeUI();
+      });
       onValue(ref(db, "catalog"), s => { catalog = s.val() || {}; renderAll(); });
       onValue(ref(db, "orders"), s => {
         const data = s.val() || {};
@@ -328,7 +393,6 @@
       return (category || "").includes("餅乾");
     }
 
-    // 核心解析函式：優先使用 productId 綁定同一商品，若為舊歷史訂單則自動模糊比對並回溯至同一個商品 ID
     function resolveCatalogProduct(orderItem) {
       if (orderItem.productId && catalog[orderItem.productId]) {
         return { id: orderItem.productId, ...catalog[orderItem.productId] };
@@ -927,7 +991,6 @@
       }
     };
 
-    // 商品管理卡片拖拉排序寫入 Firebase
     function reorderProducts(draggedId, targetId, allSortedIds) {
       const ids = [...allSortedIds];
       const dragIdx = ids.indexOf(draggedId);
