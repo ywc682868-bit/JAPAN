@@ -237,7 +237,6 @@
       updatePlatformStyle();
     });
 
-    // 監聽後台切換的營業模式（正在連線中 vs 結束連線現貨制）
     onValue(ref(db, "store_settings"), (snapshot) => {
       storeSettings = snapshot.val() || { mode: "live", igUrl: DEFAULT_IG_URL };
       applyStoreModeUI();
@@ -389,13 +388,15 @@
 
         const qty = currentCart[id] || 0;
         const availableStock = getAvailableStock(item);
+        
+        // 【核心修改】不管是不是連線中，只要後台勾選已完售 (item.isOutOfStock) 或庫存 <= 0，就視為售完
         const isOutOfStock = item.isOutOfStock || availableStock <= 0;
 
         const card = document.createElement("div");
         card.className = `bg-[#F8F6F4] p-3.5 sm:p-4 rounded-2xl border border-[#D5D0CC] shadow-sm flex flex-col justify-between transition-all ${isOutOfStock ? 'opacity-60 bg-gray-100 border-gray-300' : ''}`;
         
         const specTag = item.spec && item.spec.trim() !== '' ? `<span class="text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg font-medium">${item.spec}</span>` : '';
-        const soldOutLabel = stockMode ? '無現貨' : '已完售';
+        const soldOutLabel = '已完售';
         const stockBadgeText = isOutOfStock ? soldOutLabel : (stockMode ? `現貨 ${availableStock}` : `剩餘 ${availableStock}`);
 
         card.innerHTML = `
@@ -439,7 +440,7 @@
       const next = currentQty + change;
 
       if (change > 0 && next > availableStock) {
-        alert(`此商品目前現貨僅剩 ${availableStock} 件`);
+        alert(`此商品目前數量僅剩 ${availableStock} 件`);
         return;
       }
 
@@ -541,12 +542,11 @@
         return alert("請填寫完整的聯繫電話與收件地址！");
       }
 
-      // 再次核對現貨是否足夠
       for (const id of Object.keys(currentCart)) {
         const prod = catalogProducts[id];
         const avail = getAvailableStock(prod);
         if (!prod || prod.isOutOfStock || currentCart[id] > avail) {
-          alert(`抱歉，「${prod ? prod.name : '該商品'}」庫存已異動，請重新確認數量。`);
+          alert(`抱歉，「${prod ? prod.name : '該商品'}」狀態已異動，請重新確認。`);
           syncCartWithCatalog();
           renderCatalog();
           renderCart();
@@ -576,7 +576,6 @@
         timestamp: Date.now(),
         createdAtStr: new Date().toLocaleString("zh-TW")
       }).then(() => {
-        // 若為結束連線現貨制，自動扣減各商品的現貨庫存避免超賣
         if (stockMode) {
           const stockUpdates = {};
           items.forEach(item => {
