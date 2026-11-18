@@ -214,9 +214,14 @@
       </div>
 
       <!-- 管理後台篩選器 -->
-      <div class="flex items-center gap-2 flex-wrap bg-[#EFECE9] p-3 rounded-2xl">
-        <span class="text-xs font-bold text-[#7A726E]">篩選顯示分類：</span>
-        <div id="admin-category-filters" class="flex flex-wrap gap-1.5"></div>
+      <div class="flex items-center justify-between flex-wrap gap-2 bg-[#EFECE9] p-3 rounded-2xl">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-bold text-[#7A726E]">篩選顯示分類：</span>
+          <div id="admin-category-filters" class="flex flex-wrap gap-1.5"></div>
+        </div>
+        <span class="text-[11px] text-[#7A726E] flex items-center gap-1">
+          <i class="fa-solid fa-grip-vertical"></i> 可直接拖拉商品卡片調整前台排序
+        </span>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" id="admin-product-grid"></div>
@@ -245,6 +250,7 @@
     let catalog = {}, orders = [], checkedStatus = {}, localPrices = {}, purchasedQtys = {}, customProcurementOrder = [], legacyCategoryOverrides = {};
     let currentProcurementMap = {};
     let draggedProcurementKey = null;
+    let draggedProductId = null;
     let activeInputKey = null;
     let activePurchasedKey = null;
     let activeStockKey = null;
@@ -324,7 +330,6 @@
 
     // 核心解析函式：優先使用 productId 綁定同一商品，若為舊歷史訂單則自動模糊比對並回溯至同一個商品 ID
     function resolveCatalogProduct(orderItem) {
-      // 1. 訂單已直接紀錄 productId 且商品仍存在於 catalog
       if (orderItem.productId && catalog[orderItem.productId]) {
         return { id: orderItem.productId, ...catalog[orderItem.productId] };
       }
@@ -332,7 +337,6 @@
       const targetName = cleanText(orderItem.name);
       const targetSpec = (orderItem.spec || '').trim();
 
-      // 2. 完全比對（忽略引號差異）
       for (const id in catalog) {
         const item = catalog[id];
         if (cleanText(item.name) === targetName && (item.spec || '').trim() === targetSpec) {
@@ -340,12 +344,10 @@
         }
       }
 
-      // 3. 模糊比對（針對修改過品名/規格的歷史訂單，例如「米奇精靈杯」→「餐點加購米奇精靈杯」）
       for (const id in catalog) {
         const item = catalog[id];
         const itemName = cleanText(item.name);
         if (targetName && itemName && (itemName.includes(targetName) || targetName.includes(itemName))) {
-          // 若同品名有多種規格，優先比對規格或價格相符者
           if (targetSpec && (item.spec || '').trim() === targetSpec) {
             return { id, ...item };
           }
@@ -355,7 +357,6 @@
         }
       }
 
-      // 4. 僅名稱包含比對（最後備援）
       for (const id in catalog) {
         const item = catalog[id];
         const itemName = cleanText(item.name);
@@ -367,7 +368,6 @@
       return null;
     }
 
-    // 取得統一鍵值（有對應商品一律使用 productId，徹底解決改名後分裂或遺失分類的問題）
     function getUnifiedKeyAndInfo(orderItem) {
       const matchedProd = resolveCatalogProduct(orderItem);
       const legacyKey = getLegacyTextKey(orderItem.name, orderItem.spec);
@@ -396,7 +396,6 @@
       };
     }
 
-    // 相容讀取已儲存的單價 / 已採購數 / 勾選狀態（若新 key 尚無資料則自動繼承舊 key 資料）
     function getStoredValue(storeObj, primaryKey, legacyKey) {
       if (storeObj[primaryKey] !== undefined && storeObj[primaryKey] !== null) {
         return storeObj[primaryKey];
@@ -565,7 +564,6 @@
       const map = {};
       const categories = new Set(["全部"]);
 
-      // 1. 先載入所有現有商品目錄（以 productId 為鍵值，保證不拆單、不丟分類）
       Object.keys(catalog).forEach(prodId => {
         const prod = catalog[prodId];
         const category = (prod.category ? prod.category.trim() : "未分類");
@@ -586,7 +584,6 @@
         };
       });
 
-      // 2. 彙整所有訂單數量（自動歸併到同一個 productId）
       orders.forEach(o => (o.items || []).forEach(i => {
         const info = getUnifiedKeyAndInfo(i);
         const regPrice = Number(i.price || 0);
@@ -930,6 +927,26 @@
       }
     };
 
+    // 商品管理卡片拖拉排序寫入 Firebase
+    function reorderProducts(draggedId, targetId, allSortedIds) {
+      const ids = [...allSortedIds];
+      const dragIdx = ids.indexOf(draggedId);
+      const targetIdx = ids.indexOf(targetId);
+      if (dragIdx < 0 || targetIdx < 0) return;
+
+      ids.splice(dragIdx, 1);
+      ids.splice(targetIdx, 0, draggedId);
+
+      const updates = {};
+      ids.forEach((id, index) => {
+        updates[`catalog/${id}/order`] = index;
+        if (catalog[id]) catalog[id].order = index;
+      });
+
+      update(ref(db), updates);
+      renderProducts();
+    }
+
     function renderProducts() {
       const grid = document.getElementById("admin-product-grid");
       const filterContainer = document.getElementById("admin-category-filters");
@@ -967,21 +984,57 @@
         const safeProdName = (item.name || '').replace(/'/g, "\\'");
 
         const card = document.createElement("div");
-        card.className = `border border-[#D5D0CC] rounded-2xl p-3.5 sm:p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between ${isOutOfStock ? 'opacity-80' : ''}`;
+        card.className = `border border-[#D5D0CC] rounded-2xl p-3.5 sm:p-4 bg-white space-y-3 shadow-sm flex flex-col justify-between cursor-grab active:cursor-grabbing transition-all ${isOutOfStock ? 'opacity-80' : ''}`;
+        card.draggable = true;
+        card.dataset.id = id;
+
+        card.addEventListener("dragstart", (e) => {
+          draggedProductId = id;
+          e.dataTransfer.effectAllowed = "move";
+          card.classList.add("opacity-40");
+        });
+
+        card.addEventListener("dragend", () => {
+          card.classList.remove("opacity-40");
+          card.classList.remove("ring-2", "ring-[#B08889]");
+          draggedProductId = null;
+        });
+
+        card.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          if (draggedProductId && draggedProductId !== id) {
+            card.classList.add("ring-2", "ring-[#B08889]");
+          }
+        });
+
+        card.addEventListener("dragleave", () => {
+          card.classList.remove("ring-2", "ring-[#B08889]");
+        });
+
+        card.addEventListener("drop", (e) => {
+          e.preventDefault();
+          card.classList.remove("ring-2", "ring-[#B08889]");
+          if (draggedProductId && draggedProductId !== id) {
+            reorderProducts(draggedProductId, id, sortedIds);
+          }
+        });
         
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-center mb-2">
-              <button type="button" onclick="quickChangeCategory('${id}', '${itemCategory}')" class="text-[11px] font-bold px-2.5 py-1 bg-[#EFECE9] text-[#7A726E] rounded-lg">
-                <i class="fa-solid fa-tag text-[10px]"></i> ${itemCategory}
-              </button>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[#A39E9A] px-1" title="拖拉調整順序"><i class="fa-solid fa-grip-vertical text-xs"></i></span>
+                <button type="button" onclick="quickChangeCategory('${id}', '${itemCategory}')" class="text-[11px] font-bold px-2.5 py-1 bg-[#EFECE9] text-[#7A726E] rounded-lg">
+                  <i class="fa-solid fa-tag text-[10px]"></i> ${itemCategory}
+                </button>
+              </div>
               <div class="flex items-center gap-1.5">
                 <span class="text-xs px-2 py-0.5 rounded-full font-bold ${isOutOfStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
                   ${stockText}
                 </span>
               </div>
             </div>
-            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1"><img src="${item.image}" class="w-full h-full object-contain rounded-lg"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3">無圖片</div>`}
+            ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1"><img src="${item.image}" draggable="false" class="w-full h-full object-contain rounded-lg"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3">無圖片</div>`}
             <div class="font-bold text-sm text-[#4A4543]">${item.name} ${item.spec ? '(' + item.spec + ')' : ''}</div>
             <div class="text-[#B08889] font-semibold text-sm mt-1">NT$ ${item.price}</div>
           </div>
@@ -1042,7 +1095,6 @@
 
         if (editId) {
           update(ref(db, `catalog/${editId}`), payload).then(() => {
-            // 同步更新所有已關聯此 productId（或名稱匹配）的歷史訂單品名與規格，但不更動原下單價格
             orders.forEach(o => {
               let changed = false;
               const updatedItems = (o.items || []).map(item => {
