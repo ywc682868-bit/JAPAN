@@ -61,6 +61,9 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
+        <button type="button" onclick="openMyOrders()" class="relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-[#8F9E93] text-white transition-all flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-receipt text-sm"></i> <span>我的喊單</span>
+        </button>
         <a id="header-ig-btn" href="https://www.instagram.com/beardessert47/" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold bg-[#B08889] text-white transition-all flex items-center gap-1.5 shadow-sm">
           <i class="fa-brands fa-instagram text-sm"></i> <span>私訊版娘</span>
         </a>
@@ -161,6 +164,9 @@
             <button type="submit" id="btn-submit-order" disabled class="w-full py-3 bg-[#B08889] text-white font-bold rounded-xl shadow-sm transition-all text-sm opacity-40">
               確認喊單排隊
             </button>
+            <button type="button" onclick="openMyOrders()" class="w-full text-xs text-[#7A726E] underline underline-offset-2 py-1">
+              <i class="fa-solid fa-receipt mr-1"></i>查詢我喊過的單
+            </button>
           </form>
         </div>
       </div>
@@ -196,9 +202,33 @@
     </div>
   </div>
 
+  <!-- 我的喊單紀錄彈窗（存在本機瀏覽器，免登入） -->
+  <div id="my-orders-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeMyOrders()">
+    <div class="bg-[#F8F6F4] p-5 sm:p-6 rounded-3xl shadow-2xl max-w-md w-full border border-[#D5D0CC] flex flex-col" style="max-height: 85vh;">
+      <div class="flex justify-between items-center pb-3 border-b border-[#EFECE9]">
+        <h3 class="text-base sm:text-lg font-bold text-[#4A4543] flex items-center gap-2">
+          <i class="fa-solid fa-receipt text-[#8F9E93]"></i> 我的喊單紀錄
+        </h3>
+        <button type="button" onclick="closeMyOrders()" class="w-8 h-8 rounded-xl bg-[#E2DEDA] text-[#4A4543] text-sm"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="event.preventDefault(); searchMyOrders();" class="pt-3 space-y-2">
+        <label class="block text-xs font-semibold text-[#7A726E]">輸入喊單時填的名字／社群帳號</label>
+        <div class="flex gap-2">
+          <input type="text" id="lookup-name" placeholder="例如：butter_lover" class="flex-1 min-w-0 text-sm p-2.5 bg-white border border-[#D5D0CC] rounded-xl focus:outline-none">
+          <button type="submit" class="px-4 bg-[#8F9E93] text-white font-bold rounded-xl text-xs whitespace-nowrap"><i class="fa-solid fa-magnifying-glass mr-1"></i>查詢</button>
+        </div>
+        <p class="text-[11px] text-[#A39E9A] leading-relaxed">僅能查詢「連線排隊」的喊單（餅乾、現貨訂單請私訊版娘確認）。英文大小寫、前面的 @ 和空白都不影響。查不到的話，請確認是否和喊單時填的一樣，或直接私訊版娘。</p>
+      </form>
+      <div id="my-orders-list" class="flex-1 overflow-y-auto space-y-3 py-3"></div>
+      <div class="pt-3 border-t border-[#EFECE9]">
+        <button type="button" onclick="closeMyOrders()" class="w-full py-2.5 bg-[#E2DEDA] text-[#4A4543] font-bold rounded-xl text-xs">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "firebase/app";
-    import { getDatabase, ref, set, push, onValue, update } from "firebase/database";
+    import { getDatabase, ref, set, push, onValue, update, get, query, orderByChild, equalTo } from "firebase/database";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD25JH9MgZtpDbOgox8vp4_bS16-3Y_fnk",
@@ -250,6 +280,122 @@
     document.addEventListener("DOMContentLoaded", () => {
       updatePlatformStyle();
     });
+
+    // ===== 我的喊單查詢（用名字對應排隊清單，免登入） =====
+    const LAST_NAME_KEY = "butter_last_name_v1";
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // 名字正規化：去頭尾空白、去開頭 @、去中間空白、英文轉小寫
+    function normalizeName(name) {
+      return String(name || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase();
+    }
+
+    function rememberLastName(name) {
+      try { localStorage.setItem(LAST_NAME_KEY, name); } catch (e) {}
+    }
+
+    function getLastName() {
+      try { return localStorage.getItem(LAST_NAME_KEY) || ""; } catch (e) { return ""; }
+    }
+
+    function renderLookupResults(orders, keyword) {
+      const container = document.getElementById("my-orders-list");
+      if (!container) return;
+
+      if (orders.length === 0) {
+        container.innerHTML = `<p class="text-[#A39E9A] text-center py-8 text-xs">查不到「${escapeHtml(keyword)}」的喊單紀錄</p>`;
+        return;
+      }
+
+      const total = orders.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0);
+      const header = `<div class="text-xs text-[#7A726E] font-bold">共 ${orders.length} 筆・合計 NT$ ${total}</div>`;
+
+      container.innerHTML = header + orders.map(o => {
+        const typeTag = o.orderType === "stock_only"
+          ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#B08889] text-white">現貨</span>`
+          : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#8F9E93] text-white">連線喊單</span>`;
+        const statusTag = o.status
+          ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">${escapeHtml(o.status)}</span>`
+          : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE9] text-[#7A726E]">排隊中</span>`;
+
+        const itemsHtml = (o.items || []).map(i => {
+          const spec = i.spec ? `<span class="text-[#A39E9A]">(${escapeHtml(i.spec)})</span>` : "";
+          return `<div class="flex justify-between gap-2"><span>${escapeHtml(i.name)} ${spec} x ${Number(i.qty) || 0}</span><span class="font-medium whitespace-nowrap">NT$ ${(Number(i.price) || 0) * (Number(i.qty) || 0)}</span></div>`;
+        }).join("");
+
+        // 只顯示品項與金額，不顯示電話、地址
+        return `
+          <div class="bg-white p-3.5 rounded-2xl border border-[#D5D0CC] text-xs text-[#4A4543] space-y-2">
+            <div class="flex justify-between items-center gap-2">
+              <div class="flex items-center gap-1.5">${typeTag}${statusTag}</div>
+              <span class="text-[10px] text-[#A39E9A]">${escapeHtml(o.createdAtStr || "")}</span>
+            </div>
+            <div class="space-y-1">${itemsHtml}</div>
+            <div class="pt-2 border-t border-[#EFECE9] flex justify-between font-bold">
+              <span class="text-[#7A726E]">小計</span>
+              <span class="text-[#B08889]">NT$ ${Number(o.totalAmount) || 0}</span>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    window.searchMyOrders = async function() {
+      const input = document.getElementById("lookup-name");
+      const raw = input.value.trim();
+      const container = document.getElementById("my-orders-list");
+      if (!raw) {
+        container.innerHTML = `<p class="text-[#A39E9A] text-center py-8 text-xs">請先輸入名字</p>`;
+        return;
+      }
+      const key = normalizeName(raw);
+      if (!key) {
+        container.innerHTML = `<p class="text-[#A39E9A] text-center py-8 text-xs">請先輸入名字</p>`;
+        return;
+      }
+      container.innerHTML = `<p class="text-[#A39E9A] text-center py-8 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i>查詢中...</p>`;
+
+      try {
+        const ordersRef = ref(db, "orders");
+        // 資料庫規則只允許用 nameKey 查詢（舊單需由後台「舊單開放前台查詢」補上）
+        const byKey = await get(query(ordersRef, orderByChild("nameKey"), equalTo(key)));
+        const found = {};
+        byKey.forEach(child => { found[child.key] = child.val(); });
+
+        // 只顯示連線排隊單：排除現貨單、餅乾單（有電話或地址的、品項分類含餅乾的）
+        const isQueueOrder = (o) => {
+          if (o.orderType && o.orderType !== "live") return false;
+          if (o.phone || o.address) return false;
+          if (o.platform === "LINE" && (o.items || []).some(i => /餅乾/.test(i.name || ""))) return false;
+          return (o.items || []).every(i => {
+            const p = catalogProducts[i.productId];
+            return !(p && p.category && p.category.includes("餅乾"));
+          });
+        };
+        const orders = Object.values(found)
+          .filter(isQueueOrder)
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        rememberLastName(raw);
+        renderLookupResults(orders, raw);
+      } catch (e) {
+        container.innerHTML = `<p class="text-red-600 text-center py-8 text-xs">查詢失敗，請稍後再試或私訊版娘</p>`;
+      }
+    };
+
+    window.openMyOrders = function() {
+      document.getElementById("my-orders-modal").classList.remove("hidden");
+      const input = document.getElementById("lookup-name");
+      const last = getLastName() || document.getElementById("cust-name").value.trim();
+      if (last && !input.value) input.value = last;
+      if (input.value) searchMyOrders();
+      else document.getElementById("my-orders-list").innerHTML = "";
+    };
+
+    window.closeMyOrders = function() {
+      document.getElementById("my-orders-modal").classList.add("hidden");
+    };
 
     onValue(ref(db, "store_settings"), (snapshot) => {
       storeSettings = snapshot.val() || { mode: "live", igUrl: DEFAULT_IG_URL };
@@ -594,7 +740,8 @@
       const totalAmount = items.reduce((sum, i) => sum + i.price * i.qty, 0);
       const platform = isCookie ? "LINE" : document.getElementById("cust-platform").value;
 
-      set(push(ref(db, "orders")), {
+      const newOrderRef = push(ref(db, "orders"));
+      const orderData = {
         platform: platform,
         customerName: name,
         phone: phone,
@@ -604,7 +751,16 @@
         orderType: stockMode ? "stock_only" : "live",
         timestamp: Date.now(),
         createdAtStr: new Date().toLocaleString("zh-TW")
-      }).then(() => {
+      };
+      // 只有「連線排隊」且非餅乾單才建立查詢用的 nameKey；餅乾單、現貨單完全沒有這個欄位，所以查不到
+      if (!stockMode && !isCookie) {
+        const nk = normalizeName(name);
+        if (nk) orderData.nameKey = nk;
+      }
+
+      set(newOrderRef, orderData).then(() => {
+        rememberLastName(name);
+
         if (stockMode) {
           const stockUpdates = {};
           items.forEach(item => {
@@ -612,7 +768,7 @@
             const nextStock = Math.max(0, currentStock - Number(item.qty || 0));
             stockUpdates[`catalog/${item.productId}/stock`] = nextStock;
           });
-          update(ref(db), stockUpdates);
+          update(ref(db), stockUpdates).catch(err => console.warn("庫存扣除失敗", err));
         }
 
         if (stockMode) {
@@ -663,7 +819,7 @@
             window.location.href = "https://lin.ee/7sBv1xFJ";
           });
         } else {
-          alert("喊單排隊成功！有買到後闆娘會通知您。");
+          alert("喊單排隊成功！有買到後闆娘會通知您。\n可點右上角「我的喊單」查看喊過的商品。");
           currentCart = {};
           renderCatalog();
           renderCart();
