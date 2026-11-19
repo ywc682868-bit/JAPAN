@@ -122,6 +122,9 @@
           <p class="text-[11px] text-[#7A726E] mt-0.5">同一商品修改品名、規格或價錢皆會自動合併統計並保留類別；現貨庫存未填或為 0 視同無現貨。</p>
         </div>
         
+        <button type="button" onclick="resetPurchasedQtys()" class="px-3 py-2 bg-white border border-[#D5D0CC] text-[#4A4543] text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fa-solid fa-rotate-left text-[#B08889]"></i> 清空已採購數
+        </button>
         <div id="currency-settings-box" class="flex items-center gap-1.5 sm:gap-2 bg-[#EFECE9] p-1.5 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
           <div class="flex items-center gap-1">
             <span class="text-[#7A726E] font-medium">貨幣：</span>
@@ -896,8 +899,9 @@
               : `<td class="p-2 sm:p-3 text-right">
                   <input type="number" min="0" id="input-purchased-${k}" placeholder="未填" value="${currentPurchasedStr}" 
                     onfocus="activePurchasedKey='${k}'" 
-                    onblur="onPurchasedBlur('${k}', this.value)" 
-                    oninput="updatePurchasedQty('${k}', this.value)" 
+                    data-legacy="${escapeHtml(item.legacyKey || '')}"
+                    onblur="onPurchasedBlur('${k}', this.value, this.dataset.legacy)" 
+                    oninput="updatePurchasedQty('${k}', this.value, this.dataset.legacy)" 
                     style="${purchasedInputStyle}"
                     class="w-20 p-1 rounded-lg text-right text-xs font-bold focus:outline-none">
                 </td>`);
@@ -933,8 +937,9 @@
           <td class="p-2 sm:p-3 text-right whitespace-nowrap">
             ${unitCurrTag}<input type="number" id="input-price-${k}" placeholder="單價" value="${currentUnitPrice}" 
               onfocus="activeInputKey='${k}'" 
-              onblur="onPriceBlur('${k}', this.value)" 
-              oninput="updateLocalPrice('${k}', this.value)" 
+              data-legacy="${escapeHtml(item.legacyKey || '')}"
+              onblur="onPriceBlur('${k}', this.value, this.dataset.legacy)" 
+              oninput="updateLocalPrice('${k}', this.value, this.dataset.legacy)" 
               class="w-20 p-1 bg-white border border-[#D5D0CC] rounded-lg text-right text-xs font-semibold focus:outline-none">
           </td>
           <td class="p-2 sm:p-3 text-right font-bold text-[#4A4543] whitespace-nowrap" id="subtotal-${k}">${subtotalText}</td>
@@ -1018,40 +1023,59 @@
       update(ref(db, `catalog/${prodId}`), { stock: numericVal });
     };
 
+    // 寫入時同時清掉舊版「名稱_規格」鍵值，避免清空後又讀回上一輪的舊數字
+    function saveWithLegacy(node, key, legacyKey, value) {
+      const updates = { [`${node}/${key}`]: value };
+      if (legacyKey && legacyKey !== key) updates[`${node}/${legacyKey}`] = null;
+      return update(ref(db), updates);
+    }
+
     let purchasedSaveTimer = {};
-    window.updatePurchasedQty = function(key, val) {
-      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10));
+    window.updatePurchasedQty = function(key, val, legacyKey) {
+      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10) || 0);
       purchasedQtys[key] = numericVal;
+      if (legacyKey && legacyKey !== key) purchasedQtys[legacyKey] = null;
       calculateTotals();
       renderQueue();
       if (purchasedSaveTimer[key]) clearTimeout(purchasedSaveTimer[key]);
       purchasedSaveTimer[key] = setTimeout(() => {
-        set(ref(db, `procurement_purchased_qty/${key}`), numericVal);
+        saveWithLegacy("procurement_purchased_qty", key, legacyKey, numericVal);
       }, 600);
     };
 
-    window.onPurchasedBlur = function(key, val) {
+    window.onPurchasedBlur = function(key, val, legacyKey) {
       activePurchasedKey = null;
-      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10));
-      set(ref(db, `procurement_purchased_qty/${key}`), numericVal);
+      if (purchasedSaveTimer[key]) clearTimeout(purchasedSaveTimer[key]);
+      const numericVal = (val === "" || val === null) ? null : Math.max(0, parseInt(val, 10) || 0);
+      saveWithLegacy("procurement_purchased_qty", key, legacyKey, numericVal);
       renderQueue();
     };
 
     let priceSaveTimer = {};
-    window.updateLocalPrice = function(key, val) {
-      const numericVal = (val === "" || val === null) ? null : parseFloat(val);
+    window.updateLocalPrice = function(key, val, legacyKey) {
+      const numericVal = (val === "" || val === null) ? null : (parseFloat(val) || 0);
       localPrices[key] = numericVal;
+      if (legacyKey && legacyKey !== key) localPrices[legacyKey] = null;
       calculateTotals();
       if (priceSaveTimer[key]) clearTimeout(priceSaveTimer[key]);
       priceSaveTimer[key] = setTimeout(() => {
-        set(ref(db, `procurement_local_prices/${key}`), numericVal);
+        saveWithLegacy("procurement_local_prices", key, legacyKey, numericVal);
       }, 800);
     };
 
-    window.onPriceBlur = function(key, val) {
+    window.onPriceBlur = function(key, val, legacyKey) {
       activeInputKey = null;
-      const numericVal = (val === "" || val === null) ? null : parseFloat(val);
-      set(ref(db, `procurement_local_prices/${key}`), numericVal);
+      if (priceSaveTimer[key]) clearTimeout(priceSaveTimer[key]);
+      const numericVal = (val === "" || val === null) ? null : (parseFloat(val) || 0);
+      saveWithLegacy("procurement_local_prices", key, legacyKey, numericVal);
+    };
+
+    // 新一輪連線：一鍵清空所有「已採購數」
+    window.resetPurchasedQtys = function() {
+      if (!confirm("確定要清空所有商品的「已採購數」嗎？\n（單價、現貨庫存、確認勾選都不會動）")) return;
+      set(ref(db, "procurement_purchased_qty"), null)
+        .then(() => alert("已清空已採購數。"))
+        .catch(err => alert("清空失敗：" + err.message));
     };
 
     function getPlatformBadge(platform) {
