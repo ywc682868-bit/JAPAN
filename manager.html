@@ -1083,7 +1083,12 @@
           <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
-          <td class="p-2 sm:p-3 text-right font-bold text-[#B08889]">NT$ ${o.allocatedTotal.toLocaleString()}</td>
+          <td class="p-2 sm:p-3 text-right whitespace-nowrap">
+            ${o.allocatedTotal !== o.originalTotal
+              ? `<div class="text-[11px] text-[#A39E9A]">原訂 NT$ ${Number(o.originalTotal || 0).toLocaleString()}</div>
+                 <div class="font-bold text-[#B08889]" title="依採購表「已採購數」實際配到的金額">實配 NT$ ${o.allocatedTotal.toLocaleString()}</div>`
+              : `<div class="font-bold text-[#B08889]">NT$ ${o.allocatedTotal.toLocaleString()}</div>`}
+          </td>
           <td class="p-2 sm:p-3 text-center whitespace-nowrap">
             <button type="button" onclick="openEditOrder('${o.id}')" title="修改數量" class="p-1.5 text-[#8F9E93] hover:text-[#4E5C53]"><i class="fa-solid fa-pen-to-square"></i></button>
             <button type="button" onclick="deleteOrder(event, '${o.id}')" title="刪除整筆訂單" class="p-1.5 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
