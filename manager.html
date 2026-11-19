@@ -192,7 +192,7 @@
               <th class="p-2 sm:p-3">買家/收件人</th>
               <th class="p-2 sm:p-3">明細與收件資訊</th>
               <th class="p-2 sm:p-3 text-right whitespace-nowrap">金額</th>
-              <th class="p-2 sm:p-3 text-center rounded-r-xl">刪除</th>
+              <th class="p-2 sm:p-3 text-center rounded-r-xl whitespace-nowrap">修改 / 刪除</th>
             </tr>
           </thead>
           <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
@@ -248,6 +248,26 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4" id="admin-product-grid"></div>
+    </div>
+  </div>
+
+  <!-- 修改訂單數量彈窗 -->
+  <div id="edit-order-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeEditOrder()">
+    <div class="bg-[#F8F6F4] p-5 sm:p-6 rounded-3xl shadow-2xl max-w-md w-full border border-[#D5D0CC] flex flex-col" style="max-height: 85vh;">
+      <div class="pb-3 border-b border-[#EFECE9]">
+        <h3 id="edit-order-title" class="text-base sm:text-lg font-bold text-[#4A4543]">修改訂單</h3>
+        <p id="edit-order-sub" class="text-xs text-[#A39E9A] mt-0.5"></p>
+      </div>
+      <div id="edit-order-items" class="flex-1 overflow-y-auto divide-y divide-[#EFECE9] py-1"></div>
+      <p class="text-[11px] text-[#A39E9A] pt-2">數量改成 0 的品項會在儲存後刪除；按「儲存」前不會改到資料。</p>
+      <div class="bg-[#EFECE9] p-3 rounded-2xl flex justify-between items-center font-bold mt-3">
+        <span class="text-xs text-[#7A726E]">修改後金額：</span>
+        <span id="edit-order-total" class="text-lg text-[#B08889]">NT$ 0</span>
+      </div>
+      <div class="pt-3 flex gap-2">
+        <button type="button" onclick="closeEditOrder()" class="flex-1 py-2.5 bg-[#E2DEDA] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
+        <button type="button" onclick="saveEditOrder()" class="flex-1 py-2.5 bg-[#8F9E93] text-white font-bold rounded-xl text-sm">儲存</button>
+      </div>
     </div>
   </div>
 
@@ -517,40 +537,80 @@
       }
     };
 
-    // 單獨修改訂單內的某個品項：刪除整個品項，或數量減 1
-    function saveOrderItems(order, newItems) {
-      const newTotal = newItems.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.qty || 0), 0);
-      return update(ref(db, `orders/${order.id}`), { items: newItems, totalAmount: newTotal })
-        .catch(err => alert("更新失敗：" + err.message));
+    // ===== 修改訂單數量（彈窗） =====
+    let editingOrderId = null;
+    let editingItems = [];
+
+    function renderEditOrderItems() {
+      const list = document.getElementById("edit-order-items");
+      const totalEl = document.getElementById("edit-order-total");
+      if (!list) return;
+      list.innerHTML = editingItems.map((it, idx) => {
+        const qty = Number(it.qty) || 0;
+        const removed = qty === 0;
+        return `
+          <div class="flex items-center justify-between gap-3 py-2.5 ${removed ? 'opacity-40' : ''}">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-[#4A4543] ${removed ? 'line-through' : ''}">${escapeHtml(it.name)} ${it.spec ? '<span class="text-xs text-[#A39E9A]">(' + escapeHtml(it.spec) + ')</span>' : ''}</p>
+              <p class="text-xs text-[#A39E9A]">NT$ ${Number(it.price) || 0} / 件${removed ? '・儲存後刪除' : ''}</p>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" onclick="changeEditQty(${idx}, -1)" class="w-8 h-8 rounded-xl border border-[#D5D0CC] bg-white font-bold text-[#7A726E] text-sm">-</button>
+              <input type="number" min="0" value="${qty}" onchange="setEditQty(${idx}, this.value)" class="w-12 p-1 text-center text-sm font-bold border border-[#D5D0CC] rounded-lg focus:outline-none">
+              <button type="button" onclick="changeEditQty(${idx}, 1)" class="w-8 h-8 rounded-xl bg-[#8F9E93] font-bold text-white text-sm">+</button>
+            </div>
+          </div>`;
+      }).join("");
+      const total = editingItems.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.qty || 0), 0);
+      if (totalEl) totalEl.innerText = `NT$ ${total.toLocaleString()}`;
     }
 
-    window.removeOrderItem = function(orderId, idx) {
+    window.openEditOrder = function(orderId) {
       const order = orders.find(o => o.id === orderId);
-      if (!order || !order.items || !order.items[idx]) return;
-      const item = order.items[idx];
-      const label = `${item.name}${item.spec ? '(' + item.spec + ')' : ''} x${item.qty}`;
+      if (!order) return;
+      editingOrderId = orderId;
+      editingItems = (order.items || []).map(i => ({ ...i }));
+      document.getElementById("edit-order-title").innerText = `修改「${order.customerName || ''}」的訂單`;
+      document.getElementById("edit-order-sub").innerText = order.createdAtStr || "";
+      renderEditOrderItems();
+      document.getElementById("edit-order-modal").classList.remove("hidden");
+    };
 
-      if (order.items.length === 1) {
-        if (confirm(`「${order.customerName || ''}」只剩這個品項：\n${label}\n\n刪除後整筆訂單也會一起刪除，確定嗎？`)) {
-          remove(ref(db, `orders/${orderId}`)).catch(err => alert("刪除失敗：" + err.message));
-        }
+    window.closeEditOrder = function() {
+      editingOrderId = null;
+      editingItems = [];
+      document.getElementById("edit-order-modal").classList.add("hidden");
+    };
+
+    window.changeEditQty = function(idx, delta) {
+      if (!editingItems[idx]) return;
+      editingItems[idx].qty = Math.max(0, (Number(editingItems[idx].qty) || 0) + delta);
+      renderEditOrderItems();
+    };
+
+    window.setEditQty = function(idx, val) {
+      if (!editingItems[idx]) return;
+      editingItems[idx].qty = Math.max(0, parseInt(val, 10) || 0);
+      renderEditOrderItems();
+    };
+
+    window.saveEditOrder = function() {
+      const order = orders.find(o => o.id === editingOrderId);
+      if (!order) return closeEditOrder();
+
+      const kept = editingItems.filter(i => (Number(i.qty) || 0) > 0);
+      if (kept.length === 0) {
+        if (!confirm(`所有品項數量都是 0，將會刪除「${order.customerName || ''}」整筆訂單，確定嗎？`)) return;
+        remove(ref(db, `orders/${order.id}`))
+          .then(closeEditOrder)
+          .catch(err => alert("刪除失敗：" + err.message));
         return;
       }
 
-      if (!confirm(`確定要從「${order.customerName || ''}」的訂單刪除：\n${label}`)) return;
-      const newItems = order.items.filter((_, i) => i !== idx);
-      saveOrderItems(order, newItems);
-    };
-
-    window.decreaseOrderItem = function(orderId, idx) {
-      const order = orders.find(o => o.id === orderId);
-      if (!order || !order.items || !order.items[idx]) return;
-      const item = order.items[idx];
-      const qty = Number(item.qty || 0);
-      if (qty <= 1) return removeOrderItem(orderId, idx);
-
-      const newItems = order.items.map((it, i) => i === idx ? { ...it, qty: qty - 1 } : it);
-      saveOrderItems(order, newItems);
+      const newTotal = kept.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.qty || 0), 0);
+      update(ref(db, `orders/${order.id}`), { items: kept, totalAmount: newTotal })
+        .then(closeEditOrder)
+        .catch(err => alert("儲存失敗：" + err.message));
     };
 
     window.deleteProduct = function(e, id, productName) {
@@ -1010,17 +1070,7 @@
       let grandAllocatedTotal = 0;
 
       allocatedOrders.forEach((o, index) => {
-        const details = (o.allocatedItems || []).map((i, idx) => {
-          const qty = Number(i.reqQty) || 0;
-          const minusBtn = qty > 1
-            ? `<button type="button" onclick="decreaseOrderItem('${o.id}', ${idx})" title="數量減 1" class="w-5 h-5 rounded-md bg-[#EFECE9] hover:bg-[#E2DEDA] text-[#7A726E] text-[11px] font-bold leading-none">−</button>`
-            : '';
-          const removeBtn = `<button type="button" onclick="removeOrderItem('${o.id}', ${idx})" title="刪除這個品項" class="w-5 h-5 rounded-md bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 text-[11px] leading-none"><i class="fa-solid fa-xmark"></i></button>`;
-          return `<div class="flex items-center justify-between gap-2 py-0.5">
-              <span>${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${qty}</span>
-              <span class="flex items-center gap-1 shrink-0">${minusBtn}${removeBtn}</span>
-            </div>`;
-        }).join("");
+        const details = (o.allocatedItems || []).map(i => `${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${Number(i.reqQty) || 0}`).join("<br>");
         const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${escapeHtml(o.phone)}<br>🏠 ${escapeHtml(o.address)}</span>` : '';
         
         grandAllocatedTotal += o.allocatedTotal;
@@ -1034,8 +1084,9 @@
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
           <td class="p-2 sm:p-3 text-right font-bold text-[#B08889]">NT$ ${o.allocatedTotal.toLocaleString()}</td>
-          <td class="p-2 sm:p-3 text-center">
-            <button type="button" onclick="deleteOrder(event, '${o.id}')" class="p-1.5 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+          <td class="p-2 sm:p-3 text-center whitespace-nowrap">
+            <button type="button" onclick="openEditOrder('${o.id}')" title="修改數量" class="p-1.5 text-[#8F9E93] hover:text-[#4E5C53]"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button type="button" onclick="deleteOrder(event, '${o.id}')" title="刪除整筆訂單" class="p-1.5 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
         tbody.appendChild(tr);
