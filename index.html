@@ -387,7 +387,16 @@
       const grid = document.getElementById("customer-product-grid");
       grid.innerHTML = "";
       
+      // 排序優先順序：有現貨 → 可排隊（無庫存）→ 無現貨/已完售；同一組內維持後台拖拉的順序
+      const getDisplayGroup = (item) => {
+        if (!item.isOutOfStock && getAvailableStock(item) > 0) return 0;
+        if (isProductOrderable(item)) return 1;
+        return 2;
+      };
+
       const sortedIds = Object.keys(catalogProducts).sort((a, b) => {
+        const groupDiff = getDisplayGroup(catalogProducts[a]) - getDisplayGroup(catalogProducts[b]);
+        if (groupDiff !== 0) return groupDiff;
         return (catalogProducts[a].order ?? 9999) - (catalogProducts[b].order ?? 9999);
       });
 
