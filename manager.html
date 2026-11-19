@@ -178,14 +178,9 @@
             <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單順序自動配貨清單
           </h3>
         </div>
-        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <button onclick="backfillNameKeys()" title="讓改版前的連線排隊單也能在前台用名字查詢" class="w-full sm:w-auto px-3 py-2 bg-white border border-[#D5D0CC] text-[#4A4543] text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-magnifying-glass text-sm text-[#8F9E93]"></i> 舊單開放前台查詢
-          </button>
-          <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
-          </button>
-        </div>
+        <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
+        </button>
       </div>
       <div class="overflow-x-auto -mx-3 sm:mx-0">
         <table class="w-full text-left text-xs sm:text-sm min-w-[680px] sm:min-w-full">
@@ -385,11 +380,6 @@
 
     function escapeHtml(str) {
       return String(str ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    }
-
-    // 與前台相同的名字正規化（給顧客查詢用）
-    function normalizeName(name) {
-      return String(name || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase();
     }
 
     function sanitizeKey(str) {
@@ -1007,33 +997,6 @@
 
       if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandAllocatedTotal.toLocaleString()}`;
     }
-
-    // 判斷是否為「可給顧客查詢」的連線排隊單：非現貨、非餅乾、沒有電話地址
-    function isQueryableQueueOrder(o) {
-      if (o.orderType && o.orderType !== "live") return false;
-      if (o.phone || o.address) return false;
-      return !(o.items || []).some(i => {
-        const info = getUnifiedKeyAndInfo(i);
-        return isCookieCategory(info.category) || /餅乾/.test(i.name || "");
-      });
-    }
-
-    // 幫改版前的連線排隊單補上 nameKey（餅乾單、現貨單不會補）
-    window.backfillNameKeys = function() {
-      const updates = {};
-      orders.forEach(o => {
-        if (!o.nameKey && o.customerName && isQueryableQueueOrder(o)) {
-          const key = normalizeName(o.customerName);
-          if (key) updates[`orders/${o.id}/nameKey`] = key;
-        }
-      });
-      const n = Object.keys(updates).length;
-      if (n === 0) return alert("沒有需要補上的舊單。");
-      if (!confirm(`將有 ${n} 筆連線排隊舊單開放顧客用名字查詢（餅乾單、現貨單不會開放），確定嗎？`)) return;
-      update(ref(db), updates)
-        .then(() => alert(`已完成 ${n} 筆。`))
-        .catch(err => alert("更新失敗：" + err.message));
-    };
 
     // 下載出貨清單 (Excel)：工作表1「訂單總表」一筆訂單一列；工作表2「出貨明細」一個品項一列
     window.exportToExcel = function() {
