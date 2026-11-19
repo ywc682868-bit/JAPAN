@@ -198,7 +198,7 @@
           <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單實配總計金額：</td>
+              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單總金額：</td>
               <td id="queue-grand-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">NT$ 0</td>
               <td class="p-2.5 sm:p-3 rounded-r-xl"></td>
             </tr>
@@ -1073,7 +1073,7 @@
         const details = (o.allocatedItems || []).map(i => `${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${Number(i.reqQty) || 0}`).join("<br>");
         const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${escapeHtml(o.phone)}<br>🏠 ${escapeHtml(o.address)}</span>` : '';
         
-        grandAllocatedTotal += o.allocatedTotal;
+        grandAllocatedTotal += Number(o.originalTotal || 0);
 
         const tr = document.createElement("tr");
         tr.className = "hover:bg-white transition-colors";
@@ -1084,10 +1084,7 @@
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
           <td class="p-2 sm:p-3 text-right whitespace-nowrap">
-            ${o.allocatedTotal !== o.originalTotal
-              ? `<div class="text-[11px] text-[#A39E9A]">原訂 NT$ ${Number(o.originalTotal || 0).toLocaleString()}</div>
-                 <div class="font-bold text-[#B08889]" title="依採購表「已採購數」實際配到的金額">實配 NT$ ${o.allocatedTotal.toLocaleString()}</div>`
-              : `<div class="font-bold text-[#B08889]">NT$ ${o.allocatedTotal.toLocaleString()}</div>`}
+            <div class="font-bold text-[#B08889]">NT$ ${Number(o.originalTotal || 0).toLocaleString()}</div>
           </td>
           <td class="p-2 sm:p-3 text-center whitespace-nowrap">
             <button type="button" onclick="openEditOrder('${o.id}')" title="修改數量" class="p-1.5 text-[#8F9E93] hover:text-[#4E5C53]"><i class="fa-solid fa-pen-to-square"></i></button>
