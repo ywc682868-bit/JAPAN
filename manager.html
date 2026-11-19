@@ -178,9 +178,14 @@
             <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單順序自動配貨清單
           </h3>
         </div>
-        <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
-        </button>
+        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <button onclick="backfillNameKeys()" title="讓改版前的連線排隊單也能在前台用名字查詢" class="w-full sm:w-auto px-3 py-2 bg-white border border-[#D5D0CC] text-[#4A4543] text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-magnifying-glass text-sm text-[#8F9E93]"></i> 舊單開放前台查詢
+          </button>
+          <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
+          </button>
+        </div>
       </div>
       <div class="overflow-x-auto -mx-3 sm:mx-0">
         <table class="w-full text-left text-xs sm:text-sm min-w-[680px] sm:min-w-full">
@@ -378,6 +383,15 @@
       renderProducts();
     }
 
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // 與前台相同的名字正規化（給顧客查詢用）
+    function normalizeName(name) {
+      return String(name || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase();
+    }
+
     function sanitizeKey(str) {
       return (str || '').replace(/[.#$/\[\]]/g, "_");
     }
@@ -501,8 +515,10 @@
       }
     };
 
-    window.deleteOrder = function(e, id, customerName) {
+    window.deleteOrder = function(e, id) {
       if (e) e.stopPropagation();
+      const target = orders.find(o => o.id === id);
+      const customerName = target ? target.customerName : "";
       const label = customerName ? `「${customerName}」的` : '此筆';
       if (confirm(`確定要刪除${label}訂單嗎？刪除後無法復原。`)) {
         remove(ref(db, `orders/${id}`)).catch(err => {
@@ -808,13 +824,13 @@
           <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm"></i></td>
           <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleProcurementChecked('${k}', this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">
-            <div>${item.name}</div>
+            <div>${escapeHtml(item.name)}</div>
             <button type="button" onclick="quickSetProcurementCategory('${k}', '${item.productId || ''}', '${safeCategory}')" title="點擊可修改分類" class="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 bg-[#EFECE9] hover:bg-[#E2DEDA] text-[#7A726E] rounded-md transition-colors">
-              <i class="fa-solid fa-tag text-[9px] mr-0.5"></i>${item.category}
+              <i class="fa-solid fa-tag text-[9px] mr-0.5"></i>${escapeHtml(item.category)}
             </button>
           </td>
           <td class="p-2 sm:p-3 space-y-1">
-            <div class="text-[#7A726E]">${item.spec || '-'}</div>
+            <div class="text-[#7A726E]">${escapeHtml(item.spec || '-')}</div>
             <div class="flex flex-wrap gap-1">${priceBadges}</div>
           </td>
           <td class="p-2 sm:p-3 text-right font-bold text-[#7A726E]" id="qty-${k}">${item.totalQty}</td>
@@ -955,7 +971,7 @@
     function getPlatformBadge(platform) {
       const p = (platform || '').trim().toUpperCase();
       let bgColor = p === "THREADS" ? "#3A3837" : (p === "IG" ? "#B08889" : (p === "FB" ? "#6C7D8E" : "#8F9E93"));
-      return `<span style="background-color: ${bgColor} !important; color: #FFFFFF !important;" class="px-2.5 py-1 rounded-lg text-xs font-semibold inline-block">${platform || 'LINE'}</span>`;
+      return `<span style="background-color: ${bgColor} !important; color: #FFFFFF !important;" class="px-2.5 py-1 rounded-lg text-xs font-semibold inline-block">${escapeHtml(platform || 'LINE')}</span>`;
     }
 
     function renderQueue() {
@@ -968,23 +984,22 @@
       let grandAllocatedTotal = 0;
 
       allocatedOrders.forEach((o, index) => {
-        const details = (o.allocatedItems || []).map(i => `${i.displayName} ${i.displaySpec ? '(' + i.displaySpec + ')' : ''} x${i.reqQty}`).join("<br>");
-        const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${o.phone}<br>🏠 ${o.address}</span>` : '';
+        const details = (o.allocatedItems || []).map(i => `${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${Number(i.reqQty) || 0}`).join("<br>");
+        const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${escapeHtml(o.phone)}<br>🏠 ${escapeHtml(o.address)}</span>` : '';
         
         grandAllocatedTotal += o.allocatedTotal;
-        const safeName = (o.customerName || '').replace(/'/g, "\\'");
 
         const tr = document.createElement("tr");
         tr.className = "hover:bg-white transition-colors";
         tr.innerHTML = `
           <td class="p-2 sm:p-3 text-center font-bold text-xs text-[#7A726E]">#${index + 1}</td>
-          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${o.createdAtStr || ''}</td>
+          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${escapeHtml(o.createdAtStr || '')}</td>
           <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
-          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${o.customerName || ''}${contactInfo}</td>
+          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
           <td class="p-2 sm:p-3 text-right font-bold text-[#B08889]">NT$ ${o.allocatedTotal.toLocaleString()}</td>
           <td class="p-2 sm:p-3 text-center">
-            <button type="button" onclick="deleteOrder(event, '${o.id}', '${safeName}')" class="p-1.5 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+            <button type="button" onclick="deleteOrder(event, '${o.id}')" class="p-1.5 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -992,6 +1007,33 @@
 
       if (grandTotalEl) grandTotalEl.innerText = `NT$ ${grandAllocatedTotal.toLocaleString()}`;
     }
+
+    // 判斷是否為「可給顧客查詢」的連線排隊單：非現貨、非餅乾、沒有電話地址
+    function isQueryableQueueOrder(o) {
+      if (o.orderType && o.orderType !== "live") return false;
+      if (o.phone || o.address) return false;
+      return !(o.items || []).some(i => {
+        const info = getUnifiedKeyAndInfo(i);
+        return isCookieCategory(info.category) || /餅乾/.test(i.name || "");
+      });
+    }
+
+    // 幫改版前的連線排隊單補上 nameKey（餅乾單、現貨單不會補）
+    window.backfillNameKeys = function() {
+      const updates = {};
+      orders.forEach(o => {
+        if (!o.nameKey && o.customerName && isQueryableQueueOrder(o)) {
+          const key = normalizeName(o.customerName);
+          if (key) updates[`orders/${o.id}/nameKey`] = key;
+        }
+      });
+      const n = Object.keys(updates).length;
+      if (n === 0) return alert("沒有需要補上的舊單。");
+      if (!confirm(`將有 ${n} 筆連線排隊舊單開放顧客用名字查詢（餅乾單、現貨單不會開放），確定嗎？`)) return;
+      update(ref(db), updates)
+        .then(() => alert(`已完成 ${n} 筆。`))
+        .catch(err => alert("更新失敗：" + err.message));
+    };
 
     // 下載出貨清單 (Excel)：工作表1「訂單總表」一筆訂單一列；工作表2「出貨明細」一個品項一列
     window.exportToExcel = function() {
