@@ -517,6 +517,42 @@
       }
     };
 
+    // 單獨修改訂單內的某個品項：刪除整個品項，或數量減 1
+    function saveOrderItems(order, newItems) {
+      const newTotal = newItems.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.qty || 0), 0);
+      return update(ref(db, `orders/${order.id}`), { items: newItems, totalAmount: newTotal })
+        .catch(err => alert("更新失敗：" + err.message));
+    }
+
+    window.removeOrderItem = function(orderId, idx) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order || !order.items || !order.items[idx]) return;
+      const item = order.items[idx];
+      const label = `${item.name}${item.spec ? '(' + item.spec + ')' : ''} x${item.qty}`;
+
+      if (order.items.length === 1) {
+        if (confirm(`「${order.customerName || ''}」只剩這個品項：\n${label}\n\n刪除後整筆訂單也會一起刪除，確定嗎？`)) {
+          remove(ref(db, `orders/${orderId}`)).catch(err => alert("刪除失敗：" + err.message));
+        }
+        return;
+      }
+
+      if (!confirm(`確定要從「${order.customerName || ''}」的訂單刪除：\n${label}`)) return;
+      const newItems = order.items.filter((_, i) => i !== idx);
+      saveOrderItems(order, newItems);
+    };
+
+    window.decreaseOrderItem = function(orderId, idx) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order || !order.items || !order.items[idx]) return;
+      const item = order.items[idx];
+      const qty = Number(item.qty || 0);
+      if (qty <= 1) return removeOrderItem(orderId, idx);
+
+      const newItems = order.items.map((it, i) => i === idx ? { ...it, qty: qty - 1 } : it);
+      saveOrderItems(order, newItems);
+    };
+
     window.deleteProduct = function(e, id, productName) {
       if (e) e.stopPropagation();
       const label = productName ? `「${productName}」` : '此商品';
@@ -974,7 +1010,17 @@
       let grandAllocatedTotal = 0;
 
       allocatedOrders.forEach((o, index) => {
-        const details = (o.allocatedItems || []).map(i => `${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${Number(i.reqQty) || 0}`).join("<br>");
+        const details = (o.allocatedItems || []).map((i, idx) => {
+          const qty = Number(i.reqQty) || 0;
+          const minusBtn = qty > 1
+            ? `<button type="button" onclick="decreaseOrderItem('${o.id}', ${idx})" title="數量減 1" class="w-5 h-5 rounded-md bg-[#EFECE9] hover:bg-[#E2DEDA] text-[#7A726E] text-[11px] font-bold leading-none">−</button>`
+            : '';
+          const removeBtn = `<button type="button" onclick="removeOrderItem('${o.id}', ${idx})" title="刪除這個品項" class="w-5 h-5 rounded-md bg-red-50 hover:bg-red-100 text-red-400 hover:text-red-600 text-[11px] leading-none"><i class="fa-solid fa-xmark"></i></button>`;
+          return `<div class="flex items-center justify-between gap-2 py-0.5">
+              <span>${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${qty}</span>
+              <span class="flex items-center gap-1 shrink-0">${minusBtn}${removeBtn}</span>
+            </div>`;
+        }).join("");
         const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${escapeHtml(o.phone)}<br>🏠 ${escapeHtml(o.address)}</span>` : '';
         
         grandAllocatedTotal += o.allocatedTotal;
