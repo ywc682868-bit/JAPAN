@@ -627,9 +627,7 @@
       const currentMs = order.queueTime ?? order.timestamp;
       editingOriginalTimeValue = (currentMs !== undefined && currentMs !== null) ? toDatetimeLocalValue(Number(currentMs)) : "";
       timeInput.value = editingOriginalTimeValue;
-      timeNote.innerText = order.originalCreatedAtStr
-        ? `原本的下單時間：${order.originalCreatedAtStr}`
-        : "改成比別人早的時間，這筆就會排到他們前面。";
+      timeNote.innerText = "改成比別人早的時間，這筆就會排到他們前面。";
 
       renderEditOrderItems();
       document.getElementById("edit-order-modal").classList.remove("hidden");
@@ -678,8 +676,6 @@
         }
         payload.queueTime = newMs;
         payload.createdAtStr = formatOrderTime(newMs);
-        // 第一次調整時保留原本的下單時間，方便對帳
-        if (!order.originalCreatedAtStr) payload.originalCreatedAtStr = order.createdAtStr || "";
       }
 
       update(ref(db, `orders/${order.id}`), payload)
@@ -1185,7 +1181,7 @@
         tr.className = "hover:bg-white transition-colors";
         tr.innerHTML = `
           <td class="p-2 sm:p-3 text-center font-bold text-xs text-[#7A726E]">#${index + 1}</td>
-          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${escapeHtml(o.createdAtStr || '')}${o.originalCreatedAtStr ? `<br><span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-[#EFECE9] text-[10px] font-bold text-[#B08889]" title="原本的下單時間：${escapeHtml(o.originalCreatedAtStr)}">已調整時間</span>` : ''}</td>
+          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${escapeHtml(o.createdAtStr || '')}</td>
           <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
