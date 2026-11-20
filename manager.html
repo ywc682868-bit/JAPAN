@@ -141,6 +141,11 @@
       <div class="flex items-center gap-2 flex-wrap bg-[#EFECE9] p-3 rounded-2xl">
         <span class="text-xs font-bold text-[#7A726E]">篩選顯示分類：</span>
         <div id="procurement-category-filters" class="flex flex-wrap gap-1.5"></div>
+        <div class="flex items-center gap-1.5 ml-auto">
+          <span class="text-xs font-bold text-[#7A726E]">排序：</span>
+          <button type="button" id="btn-sort-qty" onclick="setProcurementSortMode('qty')" class="px-3 py-1 rounded-xl text-xs font-bold transition-all">需求數量多→少</button>
+          <button type="button" id="btn-sort-custom" onclick="setProcurementSortMode('custom')" class="px-3 py-1 rounded-xl text-xs font-bold transition-all">自訂拖曳順序</button>
+        </div>
       </div>
 
       <div class="overflow-x-auto -mx-3 sm:mx-0">
@@ -304,6 +309,14 @@
     let activeStockKey = null;
     let currentAdminCategoryFilter = "全部";
     let currentProcurementCategoryFilter = "全部";
+    let procurementSortMode = "qty";
+    try { procurementSortMode = localStorage.getItem("procurementSortMode") || "qty"; } catch (e) {}
+
+    window.setProcurementSortMode = function(mode) {
+      procurementSortMode = mode;
+      try { localStorage.setItem("procurementSortMode", mode); } catch (e) {}
+      renderProcurement();
+    };
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -803,18 +816,29 @@
         });
       }
 
+      const isQtySort = procurementSortMode !== "custom";
+      const btnSortQty = document.getElementById("btn-sort-qty");
+      const btnSortCustom = document.getElementById("btn-sort-custom");
+      const sortActiveCls = "px-3 py-1 rounded-xl text-xs font-bold transition-all bg-[#B08889] text-white shadow-sm";
+      const sortIdleCls = "px-3 py-1 rounded-xl text-xs font-bold transition-all bg-white text-[#7A726E] border border-[#D5D0CC]";
+      if (btnSortQty) btnSortQty.className = isQtySort ? sortActiveCls : sortIdleCls;
+      if (btnSortCustom) btnSortCustom.className = isQtySort ? sortIdleCls : sortActiveCls;
+
+      const customIdx = (k) => {
+        if (!customProcurementOrder || customProcurementOrder.length === 0) return 9999;
+        let idx = customProcurementOrder.indexOf(k);
+        if (idx === -1 && map[k].legacyKey) idx = customProcurementOrder.indexOf(map[k].legacyKey);
+        return idx === -1 ? 9999 : idx;
+      };
+
       let sortedKeys = Object.keys(map);
-      if (customProcurementOrder && customProcurementOrder.length > 0) {
-        sortedKeys.sort((a, b) => {
-          let idxA = customProcurementOrder.indexOf(a);
-          if (idxA === -1 && map[a].legacyKey) idxA = customProcurementOrder.indexOf(map[a].legacyKey);
-          let idxB = customProcurementOrder.indexOf(b);
-          if (idxB === -1 && map[b].legacyKey) idxB = customProcurementOrder.indexOf(map[b].legacyKey);
-          if (idxA === -1) idxA = 9999;
-          if (idxB === -1) idxB = 9999;
-          return idxA - idxB;
-        });
-      }
+      sortedKeys.sort((a, b) => {
+        if (isQtySort) {
+          const diff = (map[b].totalQty || 0) - (map[a].totalQty || 0);
+          if (diff !== 0) return diff;
+        }
+        return customIdx(a) - customIdx(b);
+      });
 
       const filteredMap = {};
 
@@ -868,8 +892,8 @@
         }).filter(Boolean).join(" ");
 
         const tr = document.createElement("tr");
-        tr.className = `${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors cursor-grab active:cursor-grabbing`;
-        tr.draggable = true;
+        tr.className = `${checked ? 'bg-[#8F9E93] bg-opacity-10 line-through text-[#A39E9A]' : ''} transition-colors ${isQtySort ? '' : 'cursor-grab active:cursor-grabbing'}`;
+        tr.draggable = !isQtySort;
         tr.dataset.key = k;
 
         tr.addEventListener("dragstart", (e) => {
@@ -911,7 +935,7 @@
         const safeCategory = (item.category || '').replace(/'/g, "\\'");
 
         tr.innerHTML = `
-          <td class="p-2 sm:p-3 text-center text-[#A39E9A]"><i class="fa-solid fa-grip-vertical text-xs sm:text-sm"></i></td>
+          <td class="p-2 sm:p-3 text-center text-[#A39E9A]">${isQtySort ? '' : '<i class="fa-solid fa-grip-vertical text-xs sm:text-sm"></i>'}</td>
           <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleProcurementChecked('${k}', this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">
             <div>${escapeHtml(item.name)}</div>
