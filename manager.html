@@ -266,6 +266,11 @@
         <h3 id="edit-order-title" class="text-base sm:text-lg font-bold text-[#4A4543]">修改訂單</h3>
         <p id="edit-order-sub" class="text-xs text-[#A39E9A] mt-0.5"></p>
       </div>
+      <div class="py-3 border-b border-[#EFECE9] space-y-1.5">
+        <label for="edit-order-time" class="block text-xs font-bold text-[#7A726E]"><i class="fa-solid fa-clock text-[#8F9E93] mr-1"></i>排單時間（改這裡會調整排隊順位）</label>
+        <input type="datetime-local" id="edit-order-time" step="1" class="w-full p-2 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+        <p id="edit-order-time-note" class="text-[11px] text-[#A39E9A]"></p>
+      </div>
       <div id="edit-order-items" class="flex-1 overflow-y-auto divide-y divide-[#EFECE9] py-1"></div>
       <p class="text-[11px] text-[#A39E9A] pt-2">數量改成 0 的品項會在儲存後刪除；按「儲存」前不會改到資料。</p>
       <div class="bg-[#EFECE9] p-3 rounded-2xl flex justify-between items-center font-bold mt-3">
@@ -383,7 +388,7 @@
       onValue(ref(db, "orders"), s => {
         const data = s.val() || {};
         orders = Object.keys(data).map(id => ({ id, ...data[id] }));
-        orders.sort((a, b) => (a.orderIndex ?? a.timestamp) - (b.orderIndex ?? b.timestamp));
+        orders.sort(compareOrders);
         renderAll();
       });
       onValue(ref(db, "procurement_status"), s => { checkedStatus = s.val() || {}; renderProcurement(); });
@@ -553,8 +558,36 @@
       }
     };
 
+    // ===== 排單時間 =====
+    // 排序依據：手動調整過的 queueTime 優先，其次是原本下單的 timestamp；時間相同再比 orderIndex
+    function getOrderSortTime(o) {
+      const t = o.queueTime ?? o.timestamp ?? o.orderIndex;
+      const n = Number(t);
+      return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER;
+    }
+
+    function compareOrders(a, b) {
+      const diff = getOrderSortTime(a) - getOrderSortTime(b);
+      if (diff !== 0) return diff;
+      return (Number(a.orderIndex) || 0) - (Number(b.orderIndex) || 0);
+    }
+
+    const pad2 = n => String(n).padStart(2, "0");
+
+    function toDatetimeLocalValue(ms) {
+      const d = new Date(ms);
+      if (isNaN(d.getTime())) return "";
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
+
+    function formatOrderTime(ms) {
+      const d = new Date(ms);
+      return `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
+
     // ===== 修改訂單數量（彈窗） =====
     let editingOrderId = null;
+    let editingOriginalTimeValue = "";
     let editingItems = [];
 
     function renderEditOrderItems() {
@@ -588,6 +621,16 @@
       editingItems = (order.items || []).map(i => ({ ...i }));
       document.getElementById("edit-order-title").innerText = `修改「${order.customerName || ''}」的訂單`;
       document.getElementById("edit-order-sub").innerText = order.createdAtStr || "";
+
+      const timeInput = document.getElementById("edit-order-time");
+      const timeNote = document.getElementById("edit-order-time-note");
+      const currentMs = order.queueTime ?? order.timestamp;
+      editingOriginalTimeValue = (currentMs !== undefined && currentMs !== null) ? toDatetimeLocalValue(Number(currentMs)) : "";
+      timeInput.value = editingOriginalTimeValue;
+      timeNote.innerText = order.originalCreatedAtStr
+        ? `原本的下單時間：${order.originalCreatedAtStr}`
+        : "改成比別人早的時間，這筆就會排到他們前面。";
+
       renderEditOrderItems();
       document.getElementById("edit-order-modal").classList.remove("hidden");
     };
@@ -624,7 +667,22 @@
       }
 
       const newTotal = kept.reduce((sum, i) => sum + Number(i.price || 0) * Number(i.qty || 0), 0);
-      update(ref(db, `orders/${order.id}`), { items: kept, totalAmount: newTotal })
+      const payload = { items: kept, totalAmount: newTotal };
+
+      const timeValue = document.getElementById("edit-order-time").value;
+      if (timeValue && timeValue !== editingOriginalTimeValue) {
+        const newMs = new Date(timeValue).getTime();
+        if (isNaN(newMs)) {
+          alert("排單時間格式不正確，請重新選擇。");
+          return;
+        }
+        payload.queueTime = newMs;
+        payload.createdAtStr = formatOrderTime(newMs);
+        // 第一次調整時保留原本的下單時間，方便對帳
+        if (!order.originalCreatedAtStr) payload.originalCreatedAtStr = order.createdAtStr || "";
+      }
+
+      update(ref(db, `orders/${order.id}`), payload)
         .then(closeEditOrder)
         .catch(err => alert("儲存失敗：" + err.message));
     };
@@ -1127,7 +1185,7 @@
         tr.className = "hover:bg-white transition-colors";
         tr.innerHTML = `
           <td class="p-2 sm:p-3 text-center font-bold text-xs text-[#7A726E]">#${index + 1}</td>
-          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${escapeHtml(o.createdAtStr || '')}</td>
+          <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${escapeHtml(o.createdAtStr || '')}${o.originalCreatedAtStr ? `<br><span class="inline-block mt-1 px-1.5 py-0.5 rounded bg-[#EFECE9] text-[10px] font-bold text-[#B08889]" title="原本的下單時間：${escapeHtml(o.originalCreatedAtStr)}">已調整時間</span>` : ''}</td>
           <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
@@ -1135,7 +1193,7 @@
             <div class="font-bold text-[#B08889]">NT$ ${Number(o.originalTotal || 0).toLocaleString()}</div>
           </td>
           <td class="p-2 sm:p-3 text-center whitespace-nowrap">
-            <button type="button" onclick="openEditOrder('${o.id}')" title="修改數量" class="p-1.5 text-[#8F9E93] hover:text-[#4E5C53]"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button type="button" onclick="openEditOrder('${o.id}')" title="修改數量、排單時間" class="p-1.5 text-[#8F9E93] hover:text-[#4E5C53]"><i class="fa-solid fa-pen-to-square"></i></button>
             <button type="button" onclick="deleteOrder(event, '${o.id}')" title="刪除整筆訂單" class="p-1.5 text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
