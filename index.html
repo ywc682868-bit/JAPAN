@@ -438,6 +438,11 @@
       if (stage.dataset.wall !== currentWallId) {
         const id = currentWallId;
         stage.dataset.wall = id;
+        // 照片牆縮小：寬度最多 480px，高度最多約半個螢幕，置中顯示
+        const ratio = (Number(w.w) > 0 && Number(w.h) > 0) ? Number(w.w) / Number(w.h) : 0.75;
+        stage.style.maxWidth = `min(100%, 480px, ${(55 * ratio).toFixed(1)}vh)`;
+        stage.style.marginLeft = "auto";
+        stage.style.marginRight = "auto";
         stage.innerHTML = `
           <img id="wall-img" onclick="onWallTap(event)" draggable="false" class="w-full block cursor-pointer" alt="" style="min-height: 120px; -webkit-touch-callout:none; -webkit-user-drag:none; pointer-events:auto;">
           <div id="wall-overlay" class="absolute inset-0" style="pointer-events: none;"></div>
