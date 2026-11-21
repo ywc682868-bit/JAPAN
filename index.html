@@ -111,13 +111,33 @@
       <i class="fa-solid fa-spinner fa-spin mr-2"></i> 連線資料庫中...
     </div>
 
+    <!-- 商品目錄／掃牆連線 切換 -->
+    <div id="view-switch" class="hidden grid grid-cols-2 gap-1 p-1 bg-[#F8F6F4] border border-[#D5D0CC] rounded-2xl shadow-sm">
+      <button type="button" id="view-btn-catalog" onclick="switchView('catalog')" class="py-2.5 rounded-xl text-sm font-bold transition-all"><i class="fa-solid fa-gift mr-1"></i>商品目錄</button>
+      <button type="button" id="view-btn-wall" onclick="switchView('wall')" class="py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5">
+        <span id="live-dot" class="hidden w-2 h-2 rounded-full bg-red-500"></span><i class="fa-solid fa-camera"></i>掃牆連線
+      </button>
+    </div>
+
     <!-- 客戶分類篩選列 -->
     <div class="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1" id="client-category-filters"></div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
       <!-- 商品列表 -->
       <div class="lg:col-span-2 space-y-3 sm:space-y-4">
-        <h2 class="text-lg sm:text-xl font-bold text-[#4A4543] flex items-center gap-2">
+        <!-- 掃牆連線：版娘現場拍的整面貨架（跟商品目錄分開） -->
+        <div id="wall-section" class="hidden bg-[#F8F6F4] rounded-2xl border border-[#D5D0CC] shadow-sm p-3 sm:p-4 space-y-3">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h2 class="text-base sm:text-lg font-bold text-[#4A4543] flex items-center gap-2"><i class="fa-solid fa-camera text-[#B08889]"></i>掃牆連線</h2>
+            <span class="text-[11px] text-[#7A726E]">點照片上想要的商品 ❤️，版娘標價後就能直接喊單</span>
+          </div>
+          <div id="wall-tabs" class="flex gap-1.5 overflow-x-auto scrollbar-none"></div>
+          <div id="wall-info" class="text-sm font-bold"></div>
+          <div id="wall-stage" class="relative rounded-xl overflow-hidden border border-[#D5D0CC] bg-white" style="-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;" oncontextmenu="return false;"></div>
+          <p class="text-[11px] text-[#A39E9A] leading-relaxed">❤️ 是你標的「想要」，再點一次可以取消；粉色數字是想要的人數；綠色價格標籤代表已上架，點它就能選數量加入訂購清單。標記「想要」不等於喊單，要加入訂購清單並送出才算。版娘截單後就無法再喊這面牆的商品。</p>
+        </div>
+
+        <h2 id="catalog-heading" class="text-lg sm:text-xl font-bold text-[#4A4543] flex items-center gap-2">
           <i class="fa-solid fa-gift text-[#B08889]"></i> <span id="catalog-heading-text">商品目錄</span>
         </h2>
         <div id="customer-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"></div>
@@ -172,6 +192,12 @@
       </div>
     </div>
   </main>
+
+  <!-- 掃牆：點價格標籤後的商品視窗 -->
+  <div id="wall-item-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4" onclick="if(event.target===this) closeWallItem()">
+    <div id="wall-item-body" class="bg-[#F8F6F4] p-5 rounded-3xl shadow-2xl max-w-sm w-full border border-[#D5D0CC] space-y-3"></div>
+  </div>
+  <div id="wall-toast" class="hidden fixed left-1/2 bottom-24 z-50 px-4 py-2 rounded-full bg-[#4A4543] text-white text-xs font-bold shadow-lg" style="transform: translateX(-50%);"></div>
 
   <!-- 手機版右下角懸浮按鈕 -->
   <a href="#order-section" id="mobile-floating-btn" class="lg:hidden fixed bottom-5 right-4 z-50 bg-[#B08889] text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all active:scale-95 border-2 border-white">
@@ -228,7 +254,7 @@
 
   <script type="module">
     import { initializeApp } from "firebase/app";
-    import { getDatabase, ref, set, push, onValue, update, get, query, orderByChild, equalTo } from "firebase/database";
+    import { getDatabase, ref, set, push, onValue, update, get, query, orderByChild, equalTo, remove } from "firebase/database";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD25JH9MgZtpDbOgox8vp4_bS16-3Y_fnk",
@@ -278,7 +304,289 @@
     window.selectSize = function(id, size) {
       selectedSizes[id] = size;
       renderCatalog();
+      renderWallItemModal();
     };
+
+    // ===== 掃牆模式 =====
+    let walls = {}, wallMarks = {}, currentWallId = null, wallItemId = null;
+    const wallImageCache = {};
+    const CID_KEY = "butter_cid_v1";
+
+    function getClientId() {
+      try {
+        let cid = localStorage.getItem(CID_KEY);
+        if (!cid) { cid = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem(CID_KEY, cid); }
+        return cid;
+      } catch (e) {
+        if (!window.__butterCid) window.__butterCid = "s" + Math.random().toString(36).slice(2, 10);
+        return window.__butterCid;
+      }
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("wall-toast");
+      if (!el) return;
+      el.innerText = msg;
+      el.classList.remove("hidden");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => el.classList.add("hidden"), 2200);
+    }
+
+    let currentView = null; // 'catalog' | 'wall'；null = 還沒選，有開放中的牆就先顯示掃牆
+
+    function isWallEnded(w) {
+      return !!(w && w.endAt && Date.now() >= Number(w.endAt));
+    }
+
+    function isWallOpen(w) {
+      return !!(w && w.active !== false && !isWallEnded(w));
+    }
+
+    function formatCountdown(ms) {
+      const t = Math.max(0, Math.floor(ms / 1000));
+      const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+      const p = n => String(n).padStart(2, "0");
+      return h > 0 ? `${h}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`;
+    }
+
+    function formatClock(ms) {
+      const d = new Date(Number(ms));
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+
+    window.switchView = function(view) {
+      currentView = view;
+      applyView();
+      if (view === "wall") renderWalls();
+    };
+
+    function applyView() {
+      const hasWalls = !isStockOnlyMode() && getVisibleWallIds().length > 0;
+      const anyOpen = hasWalls && getVisibleWallIds().some(id => isWallOpen(walls[id]));
+      if (currentView === null && hasWalls) currentView = anyOpen ? "wall" : "catalog";
+      const view = hasWalls ? (currentView || "catalog") : "catalog";
+
+      const sw = document.getElementById("view-switch");
+      if (sw) sw.classList.toggle("hidden", !hasWalls);
+      const dot = document.getElementById("live-dot");
+      if (dot) dot.classList.toggle("hidden", !anyOpen);
+      const on = "py-2.5 rounded-xl text-sm font-bold transition-all bg-[#B08889] text-white shadow-sm";
+      const off = "py-2.5 rounded-xl text-sm font-bold transition-all text-[#7A726E] hover:bg-white";
+      const bc = document.getElementById("view-btn-catalog");
+      const bw = document.getElementById("view-btn-wall");
+      if (bc) bc.className = view === "catalog" ? on : off;
+      if (bw) bw.className = (view === "wall" ? on : off) + " flex items-center justify-center gap-1.5";
+
+      const isWall = view === "wall";
+      document.getElementById("wall-section")?.classList.toggle("hidden", !isWall);
+      document.getElementById("catalog-heading")?.classList.toggle("hidden", isWall);
+      document.getElementById("customer-product-grid")?.classList.toggle("hidden", isWall);
+      document.getElementById("client-category-filters")?.classList.toggle("hidden", isWall);
+    }
+
+    function getVisibleWallIds() {
+      return Object.keys(walls).filter(id => walls[id] && walls[id].active !== false)
+        .sort((a, b) => (walls[b].createdAt || 0) - (walls[a].createdAt || 0));
+    }
+
+    function clusterMarks(marks, radius = 0.05) {
+      const clusters = [];
+      marks.forEach(m => {
+        const c = clusters.find(c => Math.hypot(c.x - m.x, c.y - m.y) < radius);
+        if (c) { c.sx += m.x; c.sy += m.y; c.n++; c.x = c.sx / c.n; c.y = c.sy / c.n; c.people.add(m.cid); }
+        else clusters.push({ x: m.x, y: m.y, sx: m.x, sy: m.y, n: 1, people: new Set([m.cid]) });
+      });
+      return clusters;
+    }
+
+    window.selectWall = function(id) {
+      currentWallId = id;
+      renderWalls();
+    };
+
+    function renderWallInfo() {
+      const el = document.getElementById("wall-info");
+      const w = walls[currentWallId];
+      if (!el || !w) return;
+      if (isWallEnded(w)) {
+        el.innerHTML = `<span class="inline-block px-3 py-1 rounded-full bg-gray-200 text-gray-600"><i class="fa-solid fa-lock mr-1"></i>這面牆已截單</span>`;
+      } else if (w.endAt) {
+        el.innerHTML = `<span class="inline-block px-3 py-1 rounded-full bg-red-50 text-red-600"><i class="fa-regular fa-clock mr-1"></i>限時連線中・剩 <span class="font-black">${formatCountdown(Number(w.endAt) - Date.now())}</span>（${formatClock(w.endAt)} 截單）</span>`;
+      } else {
+        el.innerHTML = `<span class="inline-block px-3 py-1 rounded-full bg-green-50 text-green-700"><i class="fa-solid fa-circle text-[8px] mr-1"></i>連線中</span>`;
+      }
+    }
+
+    function renderWalls() {
+      applyView();
+      const section = document.getElementById("wall-section");
+      if (!section || section.classList.contains("hidden")) return;
+      const ids = getVisibleWallIds();
+      if (ids.length === 0) return;
+      if (!currentWallId || !ids.includes(currentWallId)) currentWallId = ids.find(id => isWallOpen(walls[id])) || ids[0];
+
+      document.getElementById("wall-tabs").innerHTML = ids.map(id => {
+        const active = id === currentWallId;
+        const ended = isWallEnded(walls[id]);
+        return `<button type="button" onclick="selectWall('${id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${active ? 'bg-[#B08889] text-white shadow-sm' : 'bg-white text-[#7A726E] border border-[#D5D0CC]'} ${ended && !active ? 'opacity-50' : ''}">${escapeHtml(walls[id].title || '貨架')}${ended ? '（已截單）' : ''}</button>`;
+      }).join("");
+
+      const w = walls[currentWallId];
+      renderWallInfo();
+
+      const stage = document.getElementById("wall-stage");
+      if (stage.dataset.wall !== currentWallId) {
+        const id = currentWallId;
+        stage.dataset.wall = id;
+        stage.innerHTML = `
+          <img id="wall-img" onclick="onWallTap(event)" draggable="false" class="w-full block cursor-pointer" alt="" style="min-height: 120px; -webkit-touch-callout:none; -webkit-user-drag:none; pointer-events:auto;">
+          <div id="wall-overlay" class="absolute inset-0" style="pointer-events: none;"></div>
+          <div id="wall-loading" class="absolute inset-0 flex items-center justify-center text-xs text-[#A39E9A]"><i class="fa-solid fa-spinner fa-spin mr-1"></i>照片載入中…</div>`;
+        if (!wallImageCache[id]) {
+          wallImageCache[id] = get(ref(db, `wall_images_low/${id}`)).then(s => s.val() || "").catch(() => { delete wallImageCache[id]; return ""; });
+        }
+        wallImageCache[id].then(src => {
+          if (stage.dataset.wall !== id) return;
+          const img = document.getElementById("wall-img");
+          const loading = document.getElementById("wall-loading");
+          if (img) img.src = src;
+          if (loading) loading.remove();
+        });
+      }
+
+      const overlay = document.getElementById("wall-overlay");
+      if (!overlay) return;
+      const cid = getClientId();
+      const marksObj = wallMarks[currentWallId] || {};
+      const marks = Object.keys(marksObj).map(k => ({ id: k, ...marksObj[k] })).filter(m => isFinite(m.x) && isFinite(m.y));
+      const others = marks.filter(m => m.cid !== cid);
+      const mine = marks.filter(m => m.cid === cid);
+
+      const products = Object.keys(catalogProducts).filter(id => catalogProducts[id].wallId === currentWallId);
+
+      const otherHtml = clusterMarks(others).map(c => {
+        const n = c.people.size;
+        const d = Math.min(34, 18 + n * 3);
+        return `<div style="position:absolute; left:${c.x * 100}%; top:${c.y * 100}%; width:${d}px; height:${d}px; transform:translate(-50%,-50%); background:rgba(176,136,137,0.75); border:2px solid #fff;" class="rounded-full text-white text-[10px] font-black flex items-center justify-center shadow">${n}</div>`;
+      }).join("");
+      const mineHtml = mine.map(m => `<div style="position:absolute; left:${m.x * 100}%; top:${m.y * 100}%; transform:translate(-50%,-50%); font-size:22px; text-shadow:0 0 3px #fff;">❤️</div>`).join("");
+      const pinHtml = products.map(id => {
+        const p = catalogProducts[id];
+        const sold = !isProductOrderable(p);
+        return `<button type="button" onclick="openWallItem('${id}')" style="pointer-events:auto; position:absolute; left:${(p.wallX || 0) * 100}%; top:${(p.wallY || 0) * 100}%; transform:translate(-50%,-120%);" class="px-2 py-1 rounded-lg ${sold ? 'bg-gray-400' : 'bg-[#8F9E93]'} text-white text-[11px] font-bold shadow-md whitespace-nowrap border-2 border-white">${sold ? (p.isOutOfStock ? '完售' : '截單') : 'NT$' + p.price}</button>`;
+      }).join("");
+      const endedHtml = isWallEnded(w) ? `<div class="absolute inset-0 bg-gray-900 bg-opacity-30"></div>` : "";
+      overlay.innerHTML = endedHtml + otherHtml + mineHtml + pinHtml;
+    }
+
+    window.onWallTap = function(e) {
+      const wallId = currentWallId;
+      if (!wallId) return;
+      if (!isWallOpen(walls[wallId])) { showToast("這面牆已截單"); return; }
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1)) return;
+      const cid = getClientId();
+      const marksObj = wallMarks[wallId] || {};
+      const own = Object.keys(marksObj).find(k => marksObj[k].cid === cid && Math.hypot(marksObj[k].x - x, marksObj[k].y - y) < 0.04);
+      if (own) {
+        remove(ref(db, `wall_marks/${wallId}/${own}`)).then(() => showToast("已取消想要")).catch(() => showToast("取消失敗，請再試一次"));
+      } else {
+        set(push(ref(db, `wall_marks/${wallId}`)), { x: Math.round(x * 10000) / 10000, y: Math.round(y * 10000) / 10000, cid, ts: Date.now() })
+          .then(() => showToast("❤️ 已標記想要！版娘標價後就能喊單"))
+          .catch(() => showToast("標記失敗，請再試一次"));
+      }
+    };
+
+    window.openWallItem = function(id) {
+      wallItemId = id;
+      document.getElementById("wall-item-modal").classList.remove("hidden");
+      renderWallItemModal();
+    };
+
+    window.closeWallItem = function() {
+      wallItemId = null;
+      document.getElementById("wall-item-modal").classList.add("hidden");
+    };
+
+    function renderWallItemModal() {
+      const body = document.getElementById("wall-item-body");
+      if (!body || !wallItemId) return;
+      const id = wallItemId;
+      const item = catalogProducts[id];
+      if (!item) { closeWallItem(); return; }
+      const orderable = isProductOrderable(item);
+      const sizes = getProductSizes(item);
+      const selectedSize = sizes.length ? (selectedSizes[id] || "") : "";
+      const qty = sizes.length ? (selectedSize ? (currentCart[makeCartKey(id, selectedSize)] || 0) : 0) : (currentCart[id] || 0);
+      const picked = sizes.filter(sz => currentCart[makeCartKey(id, sz)]).map(sz => `${escapeHtml(sz)}×${currentCart[makeCartKey(id, sz)]}`);
+
+      body.innerHTML = `
+        <div class="flex gap-3">
+          ${item.image ? `<img src="${item.image}" class="w-28 h-28 rounded-xl border border-[#EFECE9] object-contain bg-white flex-shrink-0">` : ''}
+          <div class="min-w-0 space-y-1">
+            <h4 class="font-bold text-[#4A4543] text-base leading-snug">${escapeHtml(item.name)}</h4>
+            ${item.spec ? `<span class="inline-block text-xs bg-[#EFECE9] text-[#7A726E] px-2 py-0.5 rounded-lg">${escapeHtml(item.spec)}</span>` : ''}
+            <p class="text-lg font-black ${orderable ? 'text-[#B08889]' : 'text-gray-400 line-through'}">NT$ ${item.price}</p>
+            ${orderable ? '' : `<p class="text-xs font-bold text-red-600">${item.wallId && !isWallOpen(walls[item.wallId]) ? '這面牆已截單' : '已完售'}</p>`}
+          </div>
+        </div>
+        ${sizes.length ? `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs text-[#A39E9A]">尺寸</span>
+            <select ${orderable ? '' : 'disabled'} onchange="selectSize('${id}', this.value)" class="flex-1 max-w-[10rem] text-sm p-2 bg-white border ${selectedSize ? 'border-[#D5D0CC]' : 'border-[#B08889]'} rounded-xl focus:outline-none">
+              <option value="" ${selectedSize ? '' : 'selected'} disabled>請選擇尺寸</option>
+              ${sizes.map(sz => `<option value="${escapeHtml(sz)}" ${sz === selectedSize ? 'selected' : ''}>${escapeHtml(sz)}</option>`).join("")}
+            </select>
+          </div>
+          ${picked.length ? `<p class="text-[11px] text-[#8F9E93] font-bold text-right">已選：${picked.join("、")}</p>` : ''}` : ''}
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-[#A39E9A]">數量</span>
+          <div class="flex items-center gap-2">
+            <button type="button" ${orderable ? '' : 'disabled'} onclick="updateCart('${id}', -1)" class="w-10 h-10 rounded-xl border border-[#D5D0CC] bg-white font-bold text-[#7A726E] disabled:opacity-30">-</button>
+            <span class="w-8 text-center font-bold text-[#4A4543]">${qty}</span>
+            <button type="button" ${orderable ? '' : 'disabled'} onclick="updateCart('${id}', 1)" class="w-10 h-10 rounded-xl bg-[#8F9E93] font-bold text-white disabled:bg-gray-300">+</button>
+          </div>
+        </div>
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="closeWallItem()" class="flex-1 py-2.5 bg-[#E2DEDA] text-[#4A4543] font-bold rounded-xl text-sm">繼續掃牆</button>
+          <a href="#order-section" onclick="closeWallItem()" class="flex-1 py-2.5 bg-[#B08889] text-white font-bold rounded-xl text-sm text-center">去送出喊單</a>
+        </div>`;
+    }
+
+    onValue(ref(db, "walls"), (snapshot) => {
+      walls = snapshot.val() || {};
+      syncCartWithCatalog();
+      renderWalls();
+      renderCart();
+      renderWallItemModal();
+    });
+
+    // 每秒更新倒數；有牆剛好截單時，把那面牆的商品移出購物車
+    let lastOpenSignature = "";
+    setInterval(() => {
+      const sig = Object.keys(walls).filter(id => isWallOpen(walls[id])).sort().join(",");
+      if (sig !== lastOpenSignature) {
+        const firstRun = lastOpenSignature === "" && sig === "";
+        lastOpenSignature = sig;
+        if (!firstRun) {
+          const before = Object.keys(currentCart).length;
+          syncCartWithCatalog();
+          renderWalls();
+          renderCart();
+          renderWallItemModal();
+          if (Object.keys(currentCart).length < before) showToast("有一面牆已截單，該牆商品已從訂購清單移除");
+        }
+      } else if (!document.getElementById("wall-section")?.classList.contains("hidden")) {
+        renderWallInfo();
+      }
+    }, 1000);
+
+    onValue(ref(db, "wall_marks"), (snapshot) => {
+      wallMarks = snapshot.val() || {};
+      renderWalls();
+    });
 
     function isStockOnlyMode() {
       return storeSettings && storeSettings.mode === "stock_only";
@@ -300,6 +608,7 @@
     // 結束連線：必須「正常供貨中」且現貨庫存 > 0
     function isProductOrderable(item) {
       if (!item || item.isOutOfStock) return false;
+      if (item.wallId) return !isStockOnlyMode() && isWallOpen(walls[item.wallId]);
       if (isStockOnlyMode()) return getAvailableStock(item) > 0;
       return true;
     }
@@ -436,6 +745,7 @@
       syncCartWithCatalog();
       renderCatalog();
       renderCart();
+      renderWalls();
     });
 
     function applyStoreModeUI() {
@@ -520,6 +830,8 @@
       renderCategories();
       renderCatalog();
       renderCart();
+      renderWalls();
+      renderWallItemModal();
       updatePlatformStyle();
 
       const statusEl = document.getElementById("connection-status");
@@ -558,7 +870,7 @@
 
       const categories = new Set(["全部"]);
       Object.values(catalogProducts).forEach(item => {
-        if (item.category) categories.add(item.category.trim());
+        if (item.category && !item.wallId) categories.add(item.category.trim());
       });
 
       container.innerHTML = "";
@@ -594,6 +906,7 @@
 
       sortedIds.forEach(id => {
         const item = catalogProducts[id];
+        if (item.wallId) return; // 掃牆商品只在「掃牆連線」顯示
         const itemCategory = (item.category || '未分類').trim();
         if (currentCategoryFilter !== "全部" && itemCategory !== currentCategoryFilter) {
           return;
@@ -698,6 +1011,7 @@
       
       renderCatalog();
       renderCart();
+      renderWallItemModal();
     };
 
     function hasCookieOrder() {
