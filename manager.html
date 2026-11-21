@@ -224,6 +224,7 @@
           <input type="hidden" id="edit-id">
           <input type="text" id="p-name" required placeholder="商品名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="text" id="p-spec" placeholder="規格/顏色" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="text" id="p-sizes" placeholder="可選尺寸（逗號隔開，例：100,110,120）" title="填了之後，客人下單要先選尺寸；不需要選尺寸就留空" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="number" id="p-price" required placeholder="售價 (NT$)" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <input type="text" id="p-category" required list="category-list" placeholder="分類名稱" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
           <datalist id="category-list">
@@ -492,29 +493,48 @@
       return null;
     }
 
+    // ===== 尺寸 =====
+    // 商品的 sizes 存成陣列，例如 ["100","110","120"]；訂單品項的尺寸存在 item.size
+    function parseSizes(val) {
+      if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
+      return String(val || "").split(/[,，、\s]+/).map(v => v.trim()).filter(Boolean);
+    }
+
+    function getSizeKey(baseKey, size) {
+      return size ? `${baseKey}__${sanitizeKey(String(size).trim())}` : baseKey;
+    }
+
+    function formatSpecWithSize(spec, size) {
+      return [spec, size].map(v => (v || "").toString().trim()).filter(Boolean).join(" / ");
+    }
+
     function getUnifiedKeyAndInfo(orderItem) {
       const matchedProd = resolveCatalogProduct(orderItem);
-      const legacyKey = getLegacyTextKey(orderItem.name, orderItem.spec);
+      const size = (orderItem.size || '').toString().trim();
+      const baseLegacyKey = getLegacyTextKey(orderItem.name, orderItem.spec);
+      const legacyKey = size ? getSizeKey(baseLegacyKey, size) : baseLegacyKey;
 
       if (matchedProd) {
         return {
-          key: matchedProd.id,
+          key: getSizeKey(matchedProd.id, size),
           legacyKey,
           productId: matchedProd.id,
           name: matchedProd.name,
           spec: matchedProd.spec || '',
+          size,
           category: (matchedProd.category || '未分類').trim(),
           defaultTwdPrice: Number(matchedProd.price || orderItem.price || 0)
         };
       }
 
-      const fallbackCategory = legacyCategoryOverrides[legacyKey] || "未分類";
+      const fallbackCategory = legacyCategoryOverrides[baseLegacyKey] || "未分類";
       return {
         key: legacyKey,
         legacyKey,
         productId: null,
         name: cleanText(orderItem.name),
         spec: (orderItem.spec || '').trim(),
+        size,
         category: fallbackCategory,
         defaultTwdPrice: Number(orderItem.price || 0)
       };
@@ -600,7 +620,7 @@
         return `
           <div class="flex items-center justify-between gap-3 py-2.5 ${removed ? 'opacity-40' : ''}">
             <div class="min-w-0">
-              <p class="text-sm font-medium text-[#4A4543] ${removed ? 'line-through' : ''}">${escapeHtml(it.name)} ${it.spec ? '<span class="text-xs text-[#A39E9A]">(' + escapeHtml(it.spec) + ')</span>' : ''}</p>
+              <p class="text-sm font-medium text-[#4A4543] ${removed ? 'line-through' : ''}">${escapeHtml(it.name)} ${formatSpecWithSize(it.spec, it.size) ? '<span class="text-xs text-[#A39E9A]">(' + escapeHtml(formatSpecWithSize(it.spec, it.size)) + ')</span>' : ''}</p>
               <p class="text-xs text-[#A39E9A]">NT$ ${Number(it.price) || 0} / 件${removed ? '・儲存後刪除' : ''}</p>
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
@@ -731,7 +751,8 @@
           return {
             ...i,
             displayName: info.name,
-            displaySpec: info.spec,
+            displaySpec: formatSpecWithSize(info.spec, info.size),
+            displaySize: info.size,
             key: poolKey,
             reqQty,
             allocQty,
@@ -822,17 +843,22 @@
         const legacyKey = getLegacyTextKey(prod.name, prod.spec);
         categories.add(category);
 
-        map[prodId] = {
-          key: prodId,
-          legacyKey,
-          productId: prodId,
-          name: prod.name,
-          spec: (prod.spec || '').trim(),
-          category,
-          defaultTwdPrice,
-          priceBreakdown: { [defaultTwdPrice]: 0 },
-          totalQty: 0
-        };
+        const sizes = parseSizes(prod.sizes);
+        (sizes.length ? sizes : [""]).forEach(size => {
+          const rowKey = getSizeKey(prodId, size);
+          map[rowKey] = {
+            key: rowKey,
+            legacyKey: size ? getSizeKey(legacyKey, size) : legacyKey,
+            productId: prodId,
+            name: prod.name,
+            spec: (prod.spec || '').trim(),
+            size,
+            category,
+            defaultTwdPrice,
+            priceBreakdown: { [defaultTwdPrice]: 0 },
+            totalQty: 0
+          };
+        });
       });
 
       orders.forEach(o => (o.items || []).forEach(i => {
@@ -847,6 +873,7 @@
             productId: info.productId,
             name: info.name,
             spec: info.spec,
+            size: info.size,
             category: info.category,
             defaultTwdPrice: info.defaultTwdPrice,
             priceBreakdown: {},
@@ -998,13 +1025,13 @@
             </button>
           </td>
           <td class="p-2 sm:p-3 space-y-1">
-            <div class="text-[#7A726E]">${escapeHtml(item.spec || '-')}</div>
+            <div class="text-[#7A726E]">${escapeHtml(item.spec || (item.size ? '' : '-'))}${item.size ? ` <span class="inline-block px-1.5 py-0.5 rounded bg-[#B08889] text-white text-[11px] font-bold">${escapeHtml(item.size)}</span>` : ''}</div>
             <div class="flex flex-wrap gap-1">${priceBadges}</div>
           </td>
           <td class="p-2 sm:p-3 text-right font-bold text-[#7A726E]" id="qty-${k}">${item.totalQty}</td>
           <td class="p-2 sm:p-3 text-right">
             <input type="number" min="0" id="input-stock-${k}" placeholder="0 (無現貨)" value="${stockValStr}" 
-              ${!item.productId ? 'disabled title="此歷史品項已不在商品管理中"' : ''}
+              ${!item.productId ? 'disabled title="此歷史品項已不在商品管理中"' : (item.size ? 'disabled title="分尺寸的商品暫不支援現貨庫存（連線排隊不受影響）"' : '')}
               onfocus="activeStockKey='${k}'" 
               onblur="onStockBlur('${k}', '${item.productId || ''}', this.value)" 
               oninput="updateProductStockByRow('${k}', '${item.productId || ''}', this.value)" 
@@ -1243,7 +1270,8 @@
             "買家/收件人": o.customerName || "",
             "平台": o.platform || "LINE",
             "商品名稱": i.displayName || "",
-            "規格": i.displaySpec || "",
+            "規格": i.spec || "",
+            "尺寸": i.displaySize || "",
             "單價": unitPrice,
             "喊單數量": i.reqQty,
             "實配數量": i.allocQty,
@@ -1413,6 +1441,7 @@
             </div>
             ${item.image ? `<div class="w-full aspect-square bg-white rounded-xl mb-3 border border-[#EFECE9] overflow-hidden flex items-center justify-center p-1"><img src="${item.image}" draggable="false" class="w-full h-full object-contain rounded-lg"></div>` : `<div class="w-full aspect-square bg-[#EFECE9] rounded-xl flex items-center justify-center text-xs text-[#A39E9A] mb-3">無圖片</div>`}
             <div class="font-bold text-sm text-[#4A4543]">${item.name} ${item.spec ? '(' + item.spec + ')' : ''}</div>
+            ${parseSizes(item.sizes).length ? `<div class="text-[11px] text-[#7A726E] mt-0.5"><i class="fa-solid fa-ruler text-[10px] mr-1"></i>尺寸：${escapeHtml(parseSizes(item.sizes).join("、"))}</div>` : ''}
             <div class="text-[#B08889] font-semibold text-sm mt-1">NT$ ${item.price}</div>
           </div>
           <div class="flex gap-2 pt-2 border-t border-[#EFECE9]">
@@ -1461,13 +1490,14 @@
       const editId = document.getElementById("edit-id").value;
       const name = document.getElementById("p-name").value.trim();
       const spec = document.getElementById("p-spec").value.trim();
+      const sizes = parseSizes(document.getElementById("p-sizes").value);
       const price = Number(document.getElementById("p-price").value);
       const category = document.getElementById("p-category").value.trim() || "未分類";
       const isOutOfStock = document.getElementById("p-status").value === "out_of_stock";
       const fileInput = document.getElementById("p-image-file");
 
       const saveData = (imageUrl) => {
-        const payload = { name, spec, price, category, isOutOfStock };
+        const payload = { name, spec, sizes: sizes.length ? sizes : null, price, category, isOutOfStock };
         if (imageUrl !== undefined) payload.image = imageUrl;
 
         if (editId) {
@@ -1514,6 +1544,7 @@
       document.getElementById("edit-id").value = id;
       document.getElementById("p-name").value = item.name;
       document.getElementById("p-spec").value = item.spec || "";
+      document.getElementById("p-sizes").value = parseSizes(item.sizes).join(",");
       document.getElementById("p-price").value = item.price;
       document.getElementById("p-category").value = item.category || "未分類";
       document.getElementById("p-status").value = item.isOutOfStock ? "out_of_stock" : "available";
@@ -1527,6 +1558,7 @@
       document.getElementById("edit-id").value = "";
       document.getElementById("p-name").value = "";
       document.getElementById("p-spec").value = "";
+      document.getElementById("p-sizes").value = "";
       document.getElementById("p-price").value = "";
       document.getElementById("p-category").value = "";
       document.getElementById("p-status").value = "available";
