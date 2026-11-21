@@ -186,6 +186,11 @@
           <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-1.5">
             <i class="fa-solid fa-clock-rotate-left text-[#8F9E93]"></i>依下單順序自動配貨清單
           </h3>
+          <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+            <button type="button" id="queue-filter-all" onclick="setQueueFilter('all')" class="px-3 py-1 rounded-xl text-xs font-bold">全部</button>
+            <button type="button" id="queue-filter-unpaid" onclick="setQueueFilter('unpaid')" class="px-3 py-1 rounded-xl text-xs font-bold">新客待匯款</button>
+            <span id="queue-unpaid-summary" class="text-xs font-bold text-[#B08889]"></span>
+          </div>
         </div>
         <button onclick="exportToExcel()" class="w-full sm:w-auto px-3 py-2 bg-[#8F9E93] text-white text-xs font-bold rounded-xl shadow-sm flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-file-excel text-sm"></i> 下載出貨清單 (Excel)
@@ -462,6 +467,11 @@
       onValue(ref(db, "procurement_category_overrides"), s => { legacyCategoryOverrides = s.val() || {}; renderProcurement(); });
       onValue(ref(db, "walls"), s => { walls = s.val() || {}; renderWallAdmin(); });
       onValue(ref(db, "wall_marks"), s => { wallMarks = s.val() || {}; renderWallAdmin(); });
+      onValue(ref(db, "customers"), s => { customers = s.val() || {}; renderQueue(); }, err => {
+        console.warn("讀不到 customers：", err);
+        customersError = true;
+        renderQueue();
+      });
     }
 
     window.switchTab = function(tab) {
@@ -1633,6 +1643,54 @@
       return `<span style="background-color: ${bgColor} !important; color: #FFFFFF !important;" class="px-2.5 py-1 rounded-lg text-xs font-semibold inline-block">${escapeHtml(platform || 'LINE')}</span>`;
     }
 
+    // ===== 回頭客／新客匯款 =====
+    // customers/{名字key}：{ returning: true, name }，跨連線保留；新客的匯款狀態存在每筆訂單的 paid
+    let customers = {}, customersError = false, queueFilter = "all";
+
+    function normalizeCustomerKey(name) {
+      return sanitizeKey(String(name || "").trim().replace(/^@+/, "").replace(/\s+/g, "").toLowerCase());
+    }
+
+    function isReturningCustomer(o) {
+      const key = o.nameKey || normalizeCustomerKey(o.customerName);
+      return !!(key && customers[key] && customers[key].returning);
+    }
+
+    window.setQueueFilter = function(f) {
+      queueFilter = f;
+      renderQueue();
+    };
+
+    window.toggleReturning = function(orderId) {
+      const o = orders.find(x => x.id === orderId);
+      if (!o) return;
+      const key = o.nameKey || normalizeCustomerKey(o.customerName);
+      if (!key) return;
+      const now = isReturningCustomer(o);
+      if (now && !confirm(`確定把「${o.customerName}」改回新客嗎？`)) return;
+      set(ref(db, `customers/${key}`), now ? null : { returning: true, name: o.customerName || "", updatedAt: Date.now() })
+        .catch(err => alert("儲存失敗：" + err.message + "\n請確認資料庫規則有加上 customers。"));
+    };
+
+    window.togglePaid = function(orderId) {
+      const o = orders.find(x => x.id === orderId);
+      if (!o) return;
+      update(ref(db, `orders/${orderId}`), { paid: !o.paid, paidAt: !o.paid ? Date.now() : null })
+        .catch(err => alert("儲存失敗：" + err.message));
+    };
+
+    function getCustomerBadgeHtml(o) {
+      if (isReturningCustomer(o)) {
+        return `<div class="mt-1 flex flex-wrap gap-1">
+          <button type="button" onclick="toggleReturning('${o.id}')" title="點一下改回新客" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-green-100 text-green-700"><i class="fa-solid fa-heart mr-0.5"></i>回頭客</button>
+        </div>`;
+      }
+      return `<div class="mt-1 flex flex-wrap gap-1">
+        <button type="button" onclick="togglePaid('${o.id}')" title="點一下切換匯款狀態" class="px-2 py-0.5 rounded-lg text-[11px] font-bold ${o.paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${o.paid ? '<i class="fa-solid fa-check mr-0.5"></i>新客・已匯款' : '<i class="fa-solid fa-hourglass-half mr-0.5"></i>新客・待匯款'}</button>
+        <button type="button" onclick="toggleReturning('${o.id}')" title="這位是老客人" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-white border border-[#D5D0CC] text-[#7A726E]">設為回頭客</button>
+      </div>`;
+    }
+
     function renderQueue() {
       const tbody = document.getElementById("queue-tbody");
       const grandTotalEl = document.getElementById("queue-grand-total");
@@ -1642,7 +1700,19 @@
       const allocatedOrders = computeOrderAllocations();
       let grandAllocatedTotal = 0;
 
+      const on = "px-3 py-1 rounded-xl text-xs font-bold bg-[#B08889] text-white shadow-sm";
+      const off = "px-3 py-1 rounded-xl text-xs font-bold bg-white text-[#7A726E] border border-[#D5D0CC]";
+      const fa = document.getElementById("queue-filter-all"), fu = document.getElementById("queue-filter-unpaid");
+      if (fa) fa.className = queueFilter === "all" ? on : off;
+      if (fu) fu.className = queueFilter === "unpaid" ? on : off;
+      const unpaid = allocatedOrders.filter(o => !isReturningCustomer(o) && !o.paid);
+      const sumEl = document.getElementById("queue-unpaid-summary");
+      if (sumEl) sumEl.innerText = customersError
+        ? "⚠️ 讀不到回頭客名單，請確認資料庫規則有加上 customers"
+        : `待匯款 ${unpaid.length} 筆・NT$ ${unpaid.reduce((s, o) => s + Number(o.originalTotal || 0), 0).toLocaleString()}`;
+
       allocatedOrders.forEach((o, index) => {
+        if (queueFilter === "unpaid" && (isReturningCustomer(o) || o.paid)) return;
         const details = (o.allocatedItems || []).map(i => `${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${Number(i.reqQty) || 0}`).join("<br>");
         const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${escapeHtml(o.phone)}<br>🏠 ${escapeHtml(o.address)}</span>` : '';
         
@@ -1654,7 +1724,7 @@
           <td class="p-2 sm:p-3 text-center font-bold text-xs text-[#7A726E]">#${index + 1}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${escapeHtml(o.createdAtStr || '')}</td>
           <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
-          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
+          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${getCustomerBadgeHtml(o)}${contactInfo}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
           <td class="p-2 sm:p-3 text-right whitespace-nowrap">
             <div class="font-bold text-[#B08889]">NT$ ${Number(o.originalTotal || 0).toLocaleString()}</div>
@@ -1704,7 +1774,9 @@
           "地址": o.address || "",
           "訂購明細": detailText,
           "原訂金額": o.originalTotal || 0,
-          "實配金額": o.allocatedTotal || 0
+          "實配金額": o.allocatedTotal || 0,
+          "客戶類型": isReturningCustomer(o) ? "回頭客" : "新客",
+          "匯款狀態": isReturningCustomer(o) ? "" : (o.paid ? "已匯款" : "待匯款")
         });
 
         items.forEach(i => {
