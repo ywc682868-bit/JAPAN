@@ -110,6 +110,7 @@
       <button onclick="switchTab('procurement')" id="tab-btn-procurement" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl transition-all whitespace-nowrap">採購與庫存統計</button>
       <button onclick="switchTab('queue')" id="tab-btn-queue" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">排隊清單</button>
       <button onclick="switchTab('products')" id="tab-btn-products" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">商品管理</button>
+      <button onclick="switchTab('walls')" id="tab-btn-walls" class="flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap">📷 掃牆上架</button>
     </div>
 
     <!-- 1. 採購與庫存統計表 -->
@@ -215,6 +216,31 @@
       </div>
     </div>
 
+    <!-- 4. 掃牆上架 -->
+    <div id="tab-walls" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-4">
+      <div class="border border-[#D5D0CC] p-4 rounded-2xl bg-[#FAF9F7] space-y-3">
+        <h3 class="font-bold text-[#4A4543] text-sm sm:text-base flex items-center gap-2"><i class="fa-solid fa-camera text-[#B08889]"></i>拍一整面貨架，馬上給客人掃</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input type="text" id="wall-title" placeholder="牆名（例：UNIQLO 銀座 童裝區）" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <input type="text" id="wall-category" list="category-list" value="11月東京連線" placeholder="分類" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+          <div class="p-2.5 text-xs text-[#7A726E] flex items-center"><i class="fa-solid fa-infinity mr-1.5 text-[#8F9E93]"></i>不限時，要截單時再按「截單」</div>
+        </div>
+        <div class="flex gap-2">
+          <label class="flex-1 py-3 bg-[#B08889] text-white font-bold rounded-xl text-sm text-center cursor-pointer shadow-sm">
+            <i class="fa-solid fa-camera mr-1"></i>拍照上牆
+            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="createWallFromFile(this)">
+          </label>
+          <label class="flex-1 py-3 bg-white border border-[#D5D0CC] text-[#4A4543] font-bold rounded-xl text-sm text-center cursor-pointer">
+            <i class="fa-regular fa-images mr-1"></i>從相簿選
+            <input type="file" accept="image/*" class="hidden" onchange="createWallFromFile(this)">
+          </label>
+        </div>
+        <p id="wall-upload-status" class="text-xs text-[#7A726E]">拍完會直接出現在前台「掃牆連線」，不限時，隨時可以回來補上架。客人看到的是低解析度照片（看不清價錢），點商品標記「想要」，你再點熱點輸入價格就上架。</p>
+      </div>
+      <div id="wall-admin-tabs" class="flex gap-1.5 overflow-x-auto scrollbar-none py-1"></div>
+      <div id="wall-admin-view" class="space-y-3"></div>
+    </div>
+
     <!-- 3. 商品管理 -->
     <div id="tab-products" class="hidden bg-[#F8F6F4] rounded-2xl shadow-sm border border-[#D5D0CC] p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div class="border border-[#D5D0CC] p-4 sm:p-5 rounded-2xl bg-[#FAF9F7] space-y-3 sm:space-y-4">
@@ -260,6 +286,33 @@
     </div>
   </div>
 
+  <!-- 掃牆：點熱點上架商品 -->
+  <div id="wall-product-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeWallProduct()">
+    <div class="bg-[#F8F6F4] p-5 rounded-3xl shadow-2xl max-w-sm w-full border border-[#D5D0CC] space-y-3 overflow-y-auto" style="max-height: 92vh;">
+      <h3 class="text-base font-bold text-[#4A4543]"><i class="fa-solid fa-tag text-[#B08889] mr-1"></i>這格商品上架</h3>
+      <div class="flex gap-3 items-center">
+        <canvas id="wall-crop-preview" width="240" height="240" class="w-28 h-28 rounded-xl border border-[#D5D0CC] bg-white"></canvas>
+        <div class="flex-1 space-y-1">
+          <label class="text-xs font-bold text-[#7A726E]">商品圖框大小</label>
+          <input type="range" id="wall-crop-size" min="8" max="60" value="22" oninput="updateWallCropPreview()" class="w-full">
+          <p id="wall-draft-info" class="text-[11px] text-[#A39E9A]"></p>
+          <p class="text-[11px] text-[#B08889]">商品圖是清晰的，框的時候避開價簽</p>
+        </div>
+      </div>
+      <input type="text" id="wp-name" placeholder="商品名稱 *" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+      <div class="grid grid-cols-2 gap-2">
+        <input type="number" id="wp-price" placeholder="售價 NT$ *" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+        <input type="text" id="wp-spec" placeholder="規格/顏色" class="p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+      </div>
+      <input type="text" id="wp-sizes" placeholder="可選尺寸（逗號隔開，不分尺寸留空）" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+      <input type="text" id="wp-category" list="category-list" placeholder="分類" class="w-full p-2.5 bg-white border border-[#D5D0CC] rounded-xl text-sm focus:outline-none">
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="closeWallProduct()" class="flex-1 py-2.5 bg-[#E2DEDA] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
+        <button type="button" id="wp-save-btn" onclick="saveWallProduct()" class="flex-1 py-2.5 bg-[#8F9E93] text-white font-bold rounded-xl text-sm">確認上架</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 修改訂單數量彈窗 -->
   <div id="edit-order-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeEditOrder()">
     <div class="bg-[#F8F6F4] p-5 sm:p-6 rounded-3xl shadow-2xl max-w-md w-full border border-[#D5D0CC] flex flex-col" style="max-height: 85vh;">
@@ -287,7 +340,7 @@
 
   <script type="module">
     import { initializeApp } from "firebase/app";
-    import { getDatabase, ref, set, push, onValue, remove, update } from "firebase/database";
+    import { getDatabase, ref, set, push, onValue, remove, update, get } from "firebase/database";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 
     const firebaseConfig = {
@@ -401,10 +454,12 @@
       });
       onValue(ref(db, "procurement_custom_order"), s => { customProcurementOrder = s.val() || []; renderProcurement(); });
       onValue(ref(db, "procurement_category_overrides"), s => { legacyCategoryOverrides = s.val() || {}; renderProcurement(); });
+      onValue(ref(db, "walls"), s => { walls = s.val() || {}; renderWallAdmin(); });
+      onValue(ref(db, "wall_marks"), s => { wallMarks = s.val() || {}; renderWallAdmin(); });
     }
 
     window.switchTab = function(tab) {
-      ['procurement', 'queue', 'products'].forEach(t => {
+      ['procurement', 'queue', 'products', 'walls'].forEach(t => {
         document.getElementById(`tab-${t}`).classList.add('hidden');
         document.getElementById(`tab-btn-${t}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm text-[#7A726E] hover:bg-[#EFECE9] rounded-xl transition-all whitespace-nowrap";
       });
@@ -412,12 +467,348 @@
       document.getElementById(`tab-btn-${tab}`).className = "flex-1 min-w-[90px] py-2 sm:py-2.5 font-bold text-xs sm:text-sm bg-[#B08889] text-white rounded-xl shadow-sm transition-all whitespace-nowrap";
       if (tab === 'queue') renderQueue();
       if (tab === 'procurement') renderProcurement();
+      if (tab === 'walls') renderWallAdmin();
     };
 
     function renderAll() {
       renderProcurement();
       renderQueue();
       renderProducts();
+      renderWallAdmin();
+    }
+
+    // ===== 掃牆上架 =====
+    // walls/{id}：牆的資料；wall_images/{id}：牆的照片（分開存，前台只載入正在看的那面）
+    // wall_marks/{id}/{markId}：客人點的「想要」{x, y, cid, ts}，x、y 是 0～1 的相對位置
+    let walls = {}, wallMarks = {}, currentAdminWallId = null, wallDraft = null;
+    const wallImageSrcCache = {}, wallImageElCache = {};
+
+    function loadWallImageSrc(id) {
+      if (!wallImageSrcCache[id]) {
+        wallImageSrcCache[id] = get(ref(db, `wall_images/${id}`)).then(s => s.val() || "").catch(() => { delete wallImageSrcCache[id]; return ""; });
+      }
+      return wallImageSrcCache[id];
+    }
+
+    function loadWallImageEl(id) {
+      if (!wallImageElCache[id]) {
+        wallImageElCache[id] = loadWallImageSrc(id).then(src => new Promise(resolve => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = src;
+        }));
+      }
+      return wallImageElCache[id];
+    }
+
+    function resizeImageFile(file, maxSide, quality, cb) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          cb(canvas.toDataURL("image/jpeg", quality), w, h);
+        };
+        img.onerror = () => cb(null);
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function drawWallCrop(canvas, img, x, y, size) {
+      if (!canvas || !img) return;
+      const W = img.naturalWidth, H = img.naturalHeight;
+      const side = Math.min(size * W, W, H);
+      const sx = Math.max(0, Math.min(W - side, x * W - side / 2));
+      const sy = Math.max(0, Math.min(H - side, y * H - side / 2));
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, canvas.width, canvas.height);
+    }
+
+    function getWallMarksList(wallId) {
+      const obj = wallMarks[wallId] || {};
+      return Object.keys(obj).map(k => ({ id: k, ...obj[k] })).filter(m => isFinite(m.x) && isFinite(m.y));
+    }
+
+    // 把靠得很近的「想要」合併成一個熱點
+    function clusterWallMarks(marks, radius = 0.05) {
+      const clusters = [];
+      marks.forEach(m => {
+        const c = clusters.find(c => Math.hypot(c.x - m.x, c.y - m.y) < radius);
+        if (c) {
+          c.sx += m.x; c.sy += m.y; c.n++;
+          c.x = c.sx / c.n; c.y = c.sy / c.n;
+          c.people.add(m.cid || m.id);
+        } else {
+          clusters.push({ x: m.x, y: m.y, sx: m.x, sy: m.y, n: 1, people: new Set([m.cid || m.id]) });
+        }
+      });
+      clusters.forEach(c => c.count = c.people.size);
+      return clusters.sort((a, b) => b.count - a.count);
+    }
+
+    function getWallProducts(wallId) {
+      return Object.keys(catalog).filter(id => catalog[id].wallId === wallId).map(id => ({ id, ...catalog[id] }));
+    }
+
+    window.selectAdminWall = function(id) {
+      currentAdminWallId = id;
+      renderWallAdmin();
+    };
+
+    window.createWallFromFile = function(input) {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      const statusEl = document.getElementById("wall-upload-status");
+      const now = new Date();
+      const title = document.getElementById("wall-title").value.trim() || `貨架 ${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+      const category = document.getElementById("wall-category").value.trim() || "11月東京連線";
+      const minutes = 0;
+      statusEl.innerText = "照片處理中…";
+      resizeImageFile(file, 1600, 0.8, (dataUrl, w, h) => {
+        if (!dataUrl) { statusEl.innerText = "照片讀取失敗，請再試一次。"; return; }
+        // 給客人看的低解析度版本：看得出商品，但看不清價簽
+        resizeImageFile(file, 720, 0.5, (lowUrl) => {
+        const wallRef = push(ref(db, "walls"));
+        const now = Date.now();
+        const updates = {};
+        updates[`walls/${wallRef.key}`] = { title, category, active: true, createdAt: now, endAt: minutes > 0 ? now + minutes * 60000 : null, w, h };
+        updates[`wall_images/${wallRef.key}`] = dataUrl;
+        updates[`wall_images_low/${wallRef.key}`] = lowUrl || "";
+        statusEl.innerText = "上傳中…";
+        update(ref(db), updates).then(() => {
+          wallImageSrcCache[wallRef.key] = Promise.resolve(dataUrl);
+          currentAdminWallId = wallRef.key;
+          document.getElementById("wall-title").value = "";
+          statusEl.innerText = `「${title}」已上牆，客人現在就看得到${minutes > 0 ? `，${minutes} 分鐘後截單` : ''}。`;
+          renderWallAdmin();
+        }).catch(err => { statusEl.innerText = "上傳失敗：" + err.message; });
+        });
+      });
+    };
+
+    window.updateWallField = function(id, field, value) {
+      update(ref(db, `walls/${id}`), { [field]: value });
+    };
+
+    window.extendWall = function(id, minutes) {
+      const w = walls[id];
+      if (!w) return;
+      const base = (w.endAt && Number(w.endAt) > Date.now()) ? Number(w.endAt) : Date.now();
+      update(ref(db, `walls/${id}`), { endAt: base + minutes * 60000 });
+    };
+
+    window.reopenWall = function(id) {
+      update(ref(db, `walls/${id}`), { endAt: null });
+    };
+
+    window.closeWallNow = function(id) {
+      if (!confirm("確定現在就截單嗎？客人將無法再喊這面牆的商品。")) return;
+      update(ref(db, `walls/${id}`), { endAt: Date.now() });
+    };
+
+    function adminCountdownText(w) {
+      if (!w) return "";
+      if (!w.endAt) return `<span class="text-green-700"><i class="fa-solid fa-circle text-[8px] mr-1"></i>連線中（不限時）</span>`;
+      const left = Number(w.endAt) - Date.now();
+      if (left <= 0) return `<span class="text-gray-500"><i class="fa-solid fa-lock mr-1"></i>已截單（${pad2(new Date(Number(w.endAt)).getHours())}:${pad2(new Date(Number(w.endAt)).getMinutes())}）</span>`;
+      const t = Math.floor(left / 1000);
+      const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+      const end = new Date(Number(w.endAt));
+      return `<span class="text-red-600"><i class="fa-regular fa-clock mr-1"></i>剩 ${h > 0 ? h + ':' + pad2(m) : pad2(m)}:${pad2(sec)}（${pad2(end.getHours())}:${pad2(end.getMinutes())} 截單）</span>`;
+    }
+
+    setInterval(() => {
+      const el = document.getElementById("wall-admin-countdown");
+      if (el && currentAdminWallId) el.innerHTML = adminCountdownText(walls[currentAdminWallId]);
+    }, 1000);
+
+    window.toggleWallActive = function(id) {
+      const w = walls[id];
+      if (w) update(ref(db, `walls/${id}`), { active: w.active === false });
+    };
+
+    window.clearWallMarks = function(id) {
+      if (!confirm("確定要清除這面牆所有客人的「想要」標記嗎？（已上架的商品不受影響）")) return;
+      remove(ref(db, `wall_marks/${id}`));
+    };
+
+    window.deleteWall = function(id) {
+      const w = walls[id];
+      if (!confirm(`確定要刪除「${w ? w.title : ''}」這面牆嗎？\n照片和標記會刪掉，已上架的商品會留在商品管理。`)) return;
+      const updates = { [`walls/${id}`]: null, [`wall_images/${id}`]: null, [`wall_images_low/${id}`]: null, [`wall_marks/${id}`]: null };
+      update(ref(db), updates).then(() => { if (currentAdminWallId === id) currentAdminWallId = null; });
+    };
+
+    window.onAdminWallTap = function(e) {
+      const img = e.currentTarget;
+      const rect = img.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      openWallProduct(currentAdminWallId, x, y);
+    };
+
+    window.openWallProductAt = function(x, y) {
+      openWallProduct(currentAdminWallId, x, y);
+    };
+
+    window.editWallProductPin = function(id) {
+      switchTab('products');
+      editProduct(id);
+    };
+
+    function openWallProduct(wallId, x, y) {
+      const w = walls[wallId];
+      if (!w) return;
+      wallDraft = { wallId, x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+      ["wp-name", "wp-price", "wp-spec", "wp-sizes"].forEach(i => document.getElementById(i).value = "");
+      document.getElementById("wp-category").value = w.category || "11月東京連線";
+      const near = clusterWallMarks(getWallMarksList(wallId)).find(c => Math.hypot(c.x - x, c.y - y) < 0.06);
+      document.getElementById("wall-draft-info").innerText = near ? `這附近有 ${near.count} 人想要` : "這附近還沒有人標記";
+      document.getElementById("wall-product-modal").classList.remove("hidden");
+      updateWallCropPreview();
+      setTimeout(() => document.getElementById("wp-name").focus(), 50);
+    }
+
+    window.updateWallCropPreview = function() {
+      if (!wallDraft) return;
+      const size = Number(document.getElementById("wall-crop-size").value) / 100;
+      loadWallImageEl(wallDraft.wallId).then(img => drawWallCrop(document.getElementById("wall-crop-preview"), img, wallDraft.x, wallDraft.y, size));
+    };
+
+    window.closeWallProduct = function() {
+      wallDraft = null;
+      document.getElementById("wall-product-modal").classList.add("hidden");
+    };
+
+    window.saveWallProduct = function() {
+      if (!wallDraft) return;
+      const name = document.getElementById("wp-name").value.trim();
+      const price = Number(document.getElementById("wp-price").value);
+      if (!name || !price) { alert("請填商品名稱和售價"); return; }
+      const spec = document.getElementById("wp-spec").value.trim();
+      const sizes = parseSizes(document.getElementById("wp-sizes").value);
+      const category = document.getElementById("wp-category").value.trim() || "11月東京連線";
+      const size = Number(document.getElementById("wall-crop-size").value) / 100;
+      const draft = { ...wallDraft };
+      const btn = document.getElementById("wp-save-btn");
+      btn.disabled = true;
+      loadWallImageEl(draft.wallId).then(img => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 500; canvas.height = 500;
+        drawWallCrop(canvas, img, draft.x, draft.y, size);
+        const payload = {
+          name, spec, sizes: sizes.length ? sizes : null, price, category,
+          isOutOfStock: false, stock: 0, image: img ? canvas.toDataURL("image/jpeg", 0.85) : "",
+          order: Object.keys(catalog).length,
+          wallId: draft.wallId, wallX: draft.x, wallY: draft.y
+        };
+        return set(push(ref(db, "catalog")), payload);
+      }).then(() => {
+        closeWallProduct();
+      }).catch(err => alert("上架失敗：" + err.message)).finally(() => { btn.disabled = false; });
+    };
+
+    function renderWallAdmin() {
+      const tabsEl = document.getElementById("wall-admin-tabs");
+      const viewEl = document.getElementById("wall-admin-view");
+      if (!tabsEl || !viewEl) return;
+
+      const ids = Object.keys(walls).sort((a, b) => (walls[b].createdAt || 0) - (walls[a].createdAt || 0));
+      if (!currentAdminWallId || !walls[currentAdminWallId]) currentAdminWallId = ids[0] || null;
+
+      tabsEl.innerHTML = ids.map(id => {
+        const w = walls[id];
+        const cnt = clusterWallMarks(getWallMarksList(id)).reduce((s, c) => s + c.count, 0);
+        const active = id === currentAdminWallId;
+        return `<button type="button" onclick="selectAdminWall('${id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap ${active ? 'bg-[#B08889] text-white shadow-sm' : 'bg-white text-[#7A726E] border border-[#D5D0CC]'}">${escapeHtml(w.title || '未命名')}${w.active === false ? '（已隱藏）' : ''} · ${cnt}❤</button>`;
+      }).join("");
+
+      if (!currentAdminWallId) {
+        viewEl.innerHTML = `<p class="text-center text-xs text-[#A39E9A] py-8">還沒有牆，先在上面拍一張貨架照片。</p>`;
+        viewEl.dataset.wall = "";
+        return;
+      }
+
+      const id = currentAdminWallId;
+      const w = walls[id];
+      if (viewEl.dataset.wall !== id) {
+        viewEl.dataset.wall = id;
+        viewEl.innerHTML = `
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" value="${escapeHtml(w.title || '')}" onchange="updateWallField('${id}', 'title', this.value)" class="flex-1 min-w-[8rem] p-2 bg-white border border-[#D5D0CC] rounded-xl text-sm font-bold focus:outline-none">
+          </div>
+          <div id="wall-admin-countdown" class="text-sm font-bold"></div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="closeWallNow('${id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#4A4543] text-white"><i class="fa-solid fa-lock mr-1"></i>截單</button>
+            <button type="button" onclick="reopenWall('${id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold border border-[#D5D0CC] bg-white text-[#4A4543]"><i class="fa-solid fa-lock-open mr-1"></i>重新開放</button>
+            <button type="button" id="wall-toggle-btn" onclick="toggleWallActive('${id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold border border-[#D5D0CC] bg-white text-[#4A4543]"></button>
+            <button type="button" onclick="clearWallMarks('${id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold border border-[#D5D0CC] bg-white text-[#4A4543]"><i class="fa-solid fa-eraser mr-1"></i>清除標記</button>
+            <button type="button" onclick="deleteWall('${id}')" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-50 text-red-600"><i class="fa-solid fa-trash mr-1"></i>刪除這面牆</button>
+          </div>
+          <p class="text-[11px] text-[#7A726E]">紅圈 = 客人想要（數字是人數）；綠色 = 已上架。點紅圈或照片任何地方 → 輸入價格就上架。</p>
+          <div class="relative select-none rounded-xl overflow-hidden border border-[#D5D0CC] bg-white">
+            <img id="wall-admin-img" onclick="onAdminWallTap(event)" class="w-full block cursor-crosshair" alt="">
+            <div id="wall-admin-overlay" class="absolute inset-0" style="pointer-events: none;"></div>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-[#4A4543] mb-2"><i class="fa-solid fa-fire text-[#B08889] mr-1"></i>熱點排行（還沒上架的排前面）</h4>
+            <div id="wall-hotspot-list" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+          </div>`;
+        loadWallImageSrc(id).then(src => {
+          const img = document.getElementById("wall-admin-img");
+          if (img && viewEl.dataset.wall === id) img.src = src;
+        });
+      }
+
+      const cdEl = document.getElementById("wall-admin-countdown");
+      if (cdEl) cdEl.innerHTML = adminCountdownText(w);
+      const toggleBtn = document.getElementById("wall-toggle-btn");
+      if (toggleBtn) toggleBtn.innerHTML = w.active === false
+        ? `<i class="fa-solid fa-eye mr-1"></i>重新顯示給客人`
+        : `<i class="fa-solid fa-eye-slash mr-1"></i>先對客人隱藏`;
+
+      const products = getWallProducts(id);
+      const clusters = clusterWallMarks(getWallMarksList(id));
+      clusters.forEach(c => { c.priced = products.some(p => Math.hypot((p.wallX || 0) - c.x, (p.wallY || 0) - c.y) < 0.06); });
+
+      const overlay = document.getElementById("wall-admin-overlay");
+      if (overlay) {
+        const hot = clusters.map(c => {
+          const d = Math.min(46, 22 + c.count * 4);
+          return `<button type="button" onclick="openWallProductAt(${c.x}, ${c.y})" style="pointer-events:auto; position:absolute; left:${c.x * 100}%; top:${c.y * 100}%; width:${d}px; height:${d}px; transform:translate(-50%,-50%); background:${c.priced ? 'rgba(122,114,110,0.55)' : 'rgba(220,38,38,0.78)'}; border:2px solid #fff;" class="rounded-full text-white text-xs font-black shadow-md">${c.count}</button>`;
+        }).join("");
+        const pins = products.map(p => `<button type="button" onclick="editWallProductPin('${p.id}')" style="pointer-events:auto; position:absolute; left:${(p.wallX || 0) * 100}%; top:${(p.wallY || 0) * 100}%; transform:translate(-50%,-120%);" class="px-1.5 py-0.5 rounded-lg bg-[#8F9E93] text-white text-[10px] font-bold shadow-md whitespace-nowrap border border-white">${escapeHtml(p.name)}｜$${p.price}${p.isOutOfStock ? '（完售）' : ''}</button>`).join("");
+        overlay.innerHTML = hot + pins;
+      }
+
+      const listEl = document.getElementById("wall-hotspot-list");
+      if (listEl) {
+        const sorted = [...clusters].sort((a, b) => (a.priced - b.priced) || (b.count - a.count));
+        if (sorted.length === 0) {
+          listEl.innerHTML = `<p class="col-span-2 sm:col-span-4 text-xs text-[#A39E9A] py-3">客人還沒標記。也可以直接點照片上架。</p>`;
+        } else {
+          listEl.innerHTML = sorted.map((c, i) => `
+            <button type="button" onclick="openWallProductAt(${c.x}, ${c.y})" class="text-left bg-white border ${c.priced ? 'border-[#D5D0CC] opacity-60' : 'border-[#B08889]'} rounded-xl p-2 flex items-center gap-2">
+              <canvas data-cx="${c.x}" data-cy="${c.y}" width="96" height="96" class="w-12 h-12 rounded-lg bg-[#EFECE9] flex-shrink-0"></canvas>
+              <div class="min-w-0">
+                <div class="text-sm font-black ${c.priced ? 'text-[#7A726E]' : 'text-red-600'}">${c.count} 人想要</div>
+                <div class="text-[10px] text-[#A39E9A]">${c.priced ? '已上架' : '點這裡上架'}</div>
+              </div>
+            </button>`).join("");
+          loadWallImageEl(id).then(img => {
+            listEl.querySelectorAll("canvas[data-cx]").forEach(cv => drawWallCrop(cv, img, Number(cv.dataset.cx), Number(cv.dataset.cy), 0.2));
+          });
+        }
+      }
     }
 
     function escapeHtml(str) {
