@@ -604,7 +604,7 @@
       resizeImageFile(file, 1600, 0.8, (dataUrl, w, h) => {
         if (!dataUrl) { statusEl.innerText = "照片讀取失敗，請再試一次。"; return; }
         // 給客人看的低解析度版本：看得出商品，但看不清價簽
-        resizeImageFile(file, 1080, 0.6, (lowUrl) => {
+        resizeImageFile(file, 1400, 0.82, (lowUrl) => {
         const wallRef = push(ref(db, "walls"));
         const now = Date.now();
         const updates = {};
