@@ -245,8 +245,40 @@
 
     let storeSettings = { mode: "live", igUrl: DEFAULT_IG_URL };
     let catalogProducts = {};
+    // 購物車的 key：不分尺寸的商品 = 商品 id；分尺寸的商品 = 「商品id::尺寸」
     let currentCart = {};
     let currentCategoryFilter = "全部";
+    let selectedSizes = {};
+
+    // ===== 尺寸 =====
+    function getProductSizes(item) {
+      const val = item ? item.sizes : null;
+      if (Array.isArray(val)) return val.map(v => String(v).trim()).filter(Boolean);
+      return String(val || "").split(/[,，、\s]+/).map(v => v.trim()).filter(Boolean);
+    }
+
+    function makeCartKey(id, size) {
+      return size ? `${id}::${size}` : id;
+    }
+
+    function parseCartKey(key) {
+      const idx = key.indexOf("::");
+      return idx === -1 ? { id: key, size: "" } : { id: key.slice(0, idx), size: key.slice(idx + 2) };
+    }
+
+    // 同一商品（不分尺寸）在購物車裡的總數，用來檢查現貨上限
+    function getProductCartTotal(id) {
+      return Object.keys(currentCart).reduce((sum, k) => sum + (parseCartKey(k).id === id ? currentCart[k] : 0), 0);
+    }
+
+    function formatSpecSize(spec, size) {
+      return [spec, size].map(v => (v || "").toString().trim()).filter(Boolean).join(" / ");
+    }
+
+    window.selectSize = function(id, size) {
+      selectedSizes[id] = size;
+      renderCatalog();
+    };
 
     function isStockOnlyMode() {
       return storeSettings && storeSettings.mode === "stock_only";
@@ -322,7 +354,8 @@
           : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EFECE9] text-[#7A726E]">排隊中</span>`;
 
         const itemsHtml = (o.items || []).map(i => {
-          const spec = i.spec ? `<span class="text-[#A39E9A]">(${escapeHtml(i.spec)})</span>` : "";
+          const specText = formatSpecSize(i.spec, i.size);
+          const spec = specText ? `<span class="text-[#A39E9A]">(${escapeHtml(specText)})</span>` : "";
           return `<div class="flex justify-between gap-2"><span>${escapeHtml(i.name)} ${spec} x ${Number(i.qty) || 0}</span><span class="font-medium whitespace-nowrap">NT$ ${(Number(i.price) || 0) * (Number(i.qty) || 0)}</span></div>`;
         }).join("");
 
@@ -459,14 +492,25 @@
     }
 
     function syncCartWithCatalog() {
-      Object.keys(currentCart).forEach(id => {
+      Object.keys(currentCart).forEach(key => {
+        const { id, size } = parseCartKey(key);
         const item = catalogProducts[id];
-        const maxQty = getMaxOrderQty(item);
-        if (!isProductOrderable(item)) {
-          delete currentCart[id];
-        } else if (currentCart[id] > maxQty) {
-          currentCart[id] = maxQty;
+        const sizes = getProductSizes(item);
+        // 商品不能買了、尺寸被拿掉了、或商品改成要選尺寸（舊的沒尺寸品項）都移出購物車
+        if (!isProductOrderable(item) || (size && !sizes.includes(size)) || (!size && sizes.length)) {
+          delete currentCart[key];
         }
+      });
+      // 現貨模式：同一商品各尺寸加總不能超過庫存
+      const seen = {};
+      Object.keys(currentCart).forEach(key => {
+        const { id } = parseCartKey(key);
+        const maxQty = getMaxOrderQty(catalogProducts[id]);
+        const used = seen[id] || 0;
+        const allowed = Math.max(0, maxQty - used);
+        if (currentCart[key] > allowed) currentCart[key] = allowed;
+        if (currentCart[key] <= 0) delete currentCart[key];
+        else seen[id] = used + currentCart[key];
       });
     }
 
@@ -555,7 +599,11 @@
           return;
         }
 
-        const qty = currentCart[id] || 0;
+        const sizes = getProductSizes(item);
+        const hasSizes = sizes.length > 0;
+        if (hasSizes && selectedSizes[id] && !sizes.includes(selectedSizes[id])) delete selectedSizes[id];
+        const selectedSize = hasSizes ? (selectedSizes[id] || "") : "";
+        const qty = hasSizes ? (selectedSize ? (currentCart[makeCartKey(id, selectedSize)] || 0) : 0) : (currentCart[id] || 0);
         const availableStock = getAvailableStock(item);
         
         // 連線中：正常供貨即可排隊；結束連線：需有現貨庫存
@@ -593,7 +641,21 @@
             </div>
             <p class="text-sm sm:text-base font-bold ${isOutOfStock ? 'text-gray-400 line-through' : 'text-[#B08889]'} mt-1.5">NT$ ${item.price}</p>
           </div>
-          <div class="flex items-center justify-between mt-3 sm:mt-4 pt-3 border-t border-[#EFECE9]">
+          ${hasSizes ? `
+          <div class="mt-3 sm:mt-4 pt-3 border-t border-[#EFECE9] space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-[#A39E9A] whitespace-nowrap">尺寸</span>
+              <select ${isOutOfStock ? 'disabled' : ''} onchange="selectSize('${id}', this.value)" class="flex-1 max-w-[10rem] text-sm p-1.5 bg-white border ${selectedSize ? 'border-[#D5D0CC]' : 'border-[#B08889]'} rounded-xl focus:outline-none disabled:opacity-40">
+                <option value="" ${selectedSize ? '' : 'selected'} disabled>請選擇尺寸</option>
+                ${sizes.map(sz => `<option value="${escapeHtml(sz)}" ${sz === selectedSize ? 'selected' : ''}>${escapeHtml(sz)}</option>`).join("")}
+              </select>
+            </div>
+            ${(() => {
+              const picked = sizes.filter(sz => currentCart[makeCartKey(id, sz)]).map(sz => `${escapeHtml(sz)}×${currentCart[makeCartKey(id, sz)]}`);
+              return picked.length ? `<p class="text-[11px] text-[#8F9E93] font-bold text-right">已選：${picked.join("、")}</p>` : '';
+            })()}
+          </div>` : ''}
+          <div class="flex items-center justify-between ${hasSizes ? 'mt-2' : 'mt-3 sm:mt-4 pt-3 border-t border-[#EFECE9]'}">
             <span class="text-xs text-[#A39E9A]">數量</span>
             <div class="flex items-center gap-2">
               <button type="button" ${isOutOfStock ? 'disabled' : ''} onclick="updateCart('${id}', -1)" class="w-8 h-8 rounded-xl border border-[#D5D0CC] bg-white font-bold text-[#7A726E] hover:bg-[#EFECE9] disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm">-</button>
@@ -611,25 +673,36 @@
       if (!item) return;
       if (!isProductOrderable(item)) return;
 
+      const sizes = getProductSizes(item);
+      let key = id;
+      if (sizes.length) {
+        const size = selectedSizes[id];
+        if (!size) {
+          if (change > 0) alert("請先選擇尺寸");
+          return;
+        }
+        key = makeCartKey(id, size);
+      }
+
       const maxQty = getMaxOrderQty(item);
-      const currentQty = currentCart[id] || 0;
+      const currentQty = currentCart[key] || 0;
       const next = currentQty + change;
 
-      if (change > 0 && next > maxQty) {
+      if (change > 0 && getProductCartTotal(id) + change > maxQty) {
         alert(`此商品目前現貨僅剩 ${maxQty} 件`);
         return;
       }
 
-      if (next <= 0) delete currentCart[id];
-      else currentCart[id] = next;
+      if (next <= 0) delete currentCart[key];
+      else currentCart[key] = next;
       
       renderCatalog();
       renderCart();
     };
 
     function hasCookieOrder() {
-      for (const id in currentCart) {
-        const item = catalogProducts[id];
+      for (const key in currentCart) {
+        const item = catalogProducts[parseCartKey(key).id];
         if (item && item.category && item.category.includes("餅乾")) {
           return true;
         }
@@ -669,12 +742,14 @@
         return;
       }
 
-      keys.forEach(id => {
-        const item = catalogProducts[id];
-        const qty = currentCart[id];
+      keys.forEach(key => {
+        const { size } = parseCartKey(key);
+        const item = catalogProducts[parseCartKey(key).id];
+        const qty = currentCart[key];
         total += item.price * qty;
         count += qty;
-        const specText = item.spec && item.spec.trim() !== '' ? `<span class="text-xs text-[#A39E9A]">(${item.spec})</span> ` : '';
+        const specLabel = formatSpecSize(item.spec, size);
+        const specText = specLabel ? `<span class="text-xs text-[#A39E9A]">(${escapeHtml(specLabel)})</span> ` : '';
         cartList.innerHTML += `<div class="py-2.5 flex justify-between items-center text-sm"><div><p class="font-medium text-[#4A4543]">${item.name} ${specText}</p><p class="text-xs text-[#A39E9A]">x ${qty}</p></div><span class="font-bold text-[#4A4543]">NT$ ${item.price * qty}</span></div>`;
       });
 
@@ -718,9 +793,12 @@
         return alert("請填寫完整的聯繫電話與收件地址！");
       }
 
-      for (const id of Object.keys(currentCart)) {
+      for (const key of Object.keys(currentCart)) {
+        const { id, size } = parseCartKey(key);
         const prod = catalogProducts[id];
-        if (!isProductOrderable(prod) || currentCart[id] > getMaxOrderQty(prod)) {
+        const sizes = getProductSizes(prod);
+        const sizeInvalid = (size && !sizes.includes(size)) || (!size && sizes.length);
+        if (!isProductOrderable(prod) || sizeInvalid || getProductCartTotal(id) > getMaxOrderQty(prod)) {
           alert(`抱歉，「${prod ? prod.name : '該商品'}」狀態已異動，請重新確認。`);
           syncCartWithCatalog();
           renderCatalog();
@@ -729,13 +807,18 @@
         }
       }
 
-      const items = Object.keys(currentCart).map(id => ({
-        productId: id,
-        name: catalogProducts[id].name,
-        spec: catalogProducts[id].spec || "",
-        price: catalogProducts[id].price,
-        qty: currentCart[id]
-      }));
+      const items = Object.keys(currentCart).map(key => {
+        const { id, size } = parseCartKey(key);
+        const line = {
+          productId: id,
+          name: catalogProducts[id].name,
+          spec: catalogProducts[id].spec || "",
+          price: catalogProducts[id].price,
+          qty: currentCart[key]
+        };
+        if (size) line.size = size;
+        return line;
+      });
 
       const totalAmount = items.reduce((sum, i) => sum + i.price * i.qty, 0);
       const platform = isCookie ? "LINE" : document.getElementById("cust-platform").value;
@@ -763,10 +846,13 @@
 
         if (stockMode) {
           const stockUpdates = {};
+          const qtyByProduct = {};
           items.forEach(item => {
-            const currentStock = getAvailableStock(catalogProducts[item.productId]);
-            const nextStock = Math.max(0, currentStock - Number(item.qty || 0));
-            stockUpdates[`catalog/${item.productId}/stock`] = nextStock;
+            qtyByProduct[item.productId] = (qtyByProduct[item.productId] || 0) + Number(item.qty || 0);
+          });
+          Object.keys(qtyByProduct).forEach(pid => {
+            const currentStock = getAvailableStock(catalogProducts[pid]);
+            stockUpdates[`catalog/${pid}/stock`] = Math.max(0, currentStock - qtyByProduct[pid]);
           });
           update(ref(db), stockUpdates).catch(err => console.warn("庫存扣除失敗", err));
         }
@@ -779,7 +865,7 @@
           if (address) textMsg += `收件地址：${address}\n`;
           textMsg += `--------------------\n`;
           items.forEach(i => {
-            const s = i.spec ? `(${i.spec})` : '';
+            const s = formatSpecSize(i.spec, i.size) ? `(${formatSpecSize(i.spec, i.size)})` : '';
             textMsg += `${i.name} ${s} x ${i.qty} ($${i.price * i.qty})\n`;
           });
           textMsg += `--------------------\n`;
@@ -804,7 +890,7 @@
           textMsg += `收件地址：${address}\n`;
           textMsg += `--------------------\n`;
           items.forEach(i => {
-            const s = i.spec ? `(${i.spec})` : '';
+            const s = formatSpecSize(i.spec, i.size) ? `(${formatSpecSize(i.spec, i.size)})` : '';
             textMsg += `${i.name} ${s} x ${i.qty} ($${i.price * i.qty})\n`;
           });
           textMsg += `--------------------\n`;
