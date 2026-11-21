@@ -188,7 +188,7 @@
           </h3>
           <div class="flex items-center gap-1.5 mt-2 flex-wrap">
             <button type="button" id="queue-filter-all" onclick="setQueueFilter('all')" class="px-3 py-1 rounded-xl text-xs font-bold">全部</button>
-            <button type="button" id="queue-filter-unpaid" onclick="setQueueFilter('unpaid')" class="px-3 py-1 rounded-xl text-xs font-bold">新客待匯款</button>
+            <button type="button" id="queue-filter-unpaid" onclick="setQueueFilter('unpaid')" class="px-3 py-1 rounded-xl text-xs font-bold">只看新客（需先匯款）</button>
             <span id="queue-unpaid-summary" class="text-xs font-bold text-[#B08889]"></span>
           </div>
         </div>
@@ -204,6 +204,7 @@
               <th class="p-2 sm:p-3">時間</th>
               <th class="p-2 sm:p-3">平台</th>
               <th class="p-2 sm:p-3">買家/收件人</th>
+              <th class="p-2 sm:p-3 text-center whitespace-nowrap">回頭客</th>
               <th class="p-2 sm:p-3">明細與收件資訊</th>
               <th class="p-2 sm:p-3 text-right whitespace-nowrap">金額</th>
               <th class="p-2 sm:p-3 text-center rounded-r-xl whitespace-nowrap">修改 / 刪除</th>
@@ -212,7 +213,7 @@
           <tbody id="queue-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td colspan="5" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單總金額：</td>
+              <td colspan="6" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">所有訂單總金額：</td>
               <td id="queue-grand-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">NT$ 0</td>
               <td class="p-2.5 sm:p-3 rounded-r-xl"></td>
             </tr>
@@ -1667,29 +1668,9 @@
       const key = o.nameKey || normalizeCustomerKey(o.customerName);
       if (!key) return;
       const now = isReturningCustomer(o);
-      if (now && !confirm(`確定把「${o.customerName}」改回新客嗎？`)) return;
       set(ref(db, `customers/${key}`), now ? null : { returning: true, name: o.customerName || "", updatedAt: Date.now() })
         .catch(err => alert("儲存失敗：" + err.message + "\n請確認資料庫規則有加上 customers。"));
     };
-
-    window.togglePaid = function(orderId) {
-      const o = orders.find(x => x.id === orderId);
-      if (!o) return;
-      update(ref(db, `orders/${orderId}`), { paid: !o.paid, paidAt: !o.paid ? Date.now() : null })
-        .catch(err => alert("儲存失敗：" + err.message));
-    };
-
-    function getCustomerBadgeHtml(o) {
-      if (isReturningCustomer(o)) {
-        return `<div class="mt-1 flex flex-wrap gap-1">
-          <button type="button" onclick="toggleReturning('${o.id}')" title="點一下改回新客" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-green-100 text-green-700"><i class="fa-solid fa-heart mr-0.5"></i>回頭客</button>
-        </div>`;
-      }
-      return `<div class="mt-1 flex flex-wrap gap-1">
-        <button type="button" onclick="togglePaid('${o.id}')" title="點一下切換匯款狀態" class="px-2 py-0.5 rounded-lg text-[11px] font-bold ${o.paid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${o.paid ? '<i class="fa-solid fa-check mr-0.5"></i>新客・已匯款' : '<i class="fa-solid fa-hourglass-half mr-0.5"></i>新客・待匯款'}</button>
-        <button type="button" onclick="toggleReturning('${o.id}')" title="這位是老客人" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-white border border-[#D5D0CC] text-[#7A726E]">設為回頭客</button>
-      </div>`;
-    }
 
     function renderQueue() {
       const tbody = document.getElementById("queue-tbody");
@@ -1705,14 +1686,14 @@
       const fa = document.getElementById("queue-filter-all"), fu = document.getElementById("queue-filter-unpaid");
       if (fa) fa.className = queueFilter === "all" ? on : off;
       if (fu) fu.className = queueFilter === "unpaid" ? on : off;
-      const unpaid = allocatedOrders.filter(o => !isReturningCustomer(o) && !o.paid);
+      const unpaid = allocatedOrders.filter(o => !isReturningCustomer(o));
       const sumEl = document.getElementById("queue-unpaid-summary");
       if (sumEl) sumEl.innerText = customersError
         ? "⚠️ 讀不到回頭客名單，請確認資料庫規則有加上 customers"
-        : `待匯款 ${unpaid.length} 筆・NT$ ${unpaid.reduce((s, o) => s + Number(o.originalTotal || 0), 0).toLocaleString()}`;
+        : `新客 ${unpaid.length} 筆・NT$ ${unpaid.reduce((s, o) => s + Number(o.originalTotal || 0), 0).toLocaleString()}（需先匯款）`;
 
       allocatedOrders.forEach((o, index) => {
-        if (queueFilter === "unpaid" && (isReturningCustomer(o) || o.paid)) return;
+        if (queueFilter === "unpaid" && isReturningCustomer(o)) return;
         const details = (o.allocatedItems || []).map(i => `${escapeHtml(i.displayName)} ${i.displaySpec ? '(' + escapeHtml(i.displaySpec) + ')' : ''} x${Number(i.reqQty) || 0}`).join("<br>");
         const contactInfo = o.phone ? `<br><span class="text-[11px] text-[#7A726E]">📞 ${escapeHtml(o.phone)}<br>🏠 ${escapeHtml(o.address)}</span>` : '';
         
@@ -1724,7 +1705,8 @@
           <td class="p-2 sm:p-3 text-center font-bold text-xs text-[#7A726E]">#${index + 1}</td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E]">${escapeHtml(o.createdAtStr || '')}</td>
           <td class="p-2 sm:p-3">${getPlatformBadge(o.platform)}</td>
-          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${getCustomerBadgeHtml(o)}${contactInfo}</td>
+          <td class="p-2 sm:p-3 font-bold text-[#4A4543]">${escapeHtml(o.customerName || '')}${contactInfo}</td>
+          <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${isReturningCustomer(o) ? 'checked' : ''} onchange="toggleReturning('${o.id}')" title="打勾＝回頭客；沒打勾＝新客，需先匯款" class="w-5 h-5 cursor-pointer" style="accent-color:#8F9E93;"></td>
           <td class="p-2 sm:p-3 text-xs text-[#7A726E] leading-relaxed">${details}</td>
           <td class="p-2 sm:p-3 text-right whitespace-nowrap">
             <div class="font-bold text-[#B08889]">NT$ ${Number(o.originalTotal || 0).toLocaleString()}</div>
@@ -1775,8 +1757,7 @@
           "訂購明細": detailText,
           "原訂金額": o.originalTotal || 0,
           "實配金額": o.allocatedTotal || 0,
-          "客戶類型": isReturningCustomer(o) ? "回頭客" : "新客",
-          "匯款狀態": isReturningCustomer(o) ? "" : (o.paid ? "已匯款" : "待匯款")
+          "客戶類型": isReturningCustomer(o) ? "回頭客" : "新客（需先匯款）"
         });
 
         items.forEach(i => {
