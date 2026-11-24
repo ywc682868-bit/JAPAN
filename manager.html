@@ -150,9 +150,10 @@
       </div>
 
       <div class="overflow-x-auto -mx-3 sm:mx-0">
-        <table class="w-full text-left text-xs sm:text-sm min-w-[780px] sm:min-w-full">
+        <table class="w-full text-left text-xs sm:text-sm min-w-[840px] sm:min-w-full">
           <thead>
             <tr class="bg-[#EFECE9] border-b border-[#D5D0CC] text-xs text-[#7A726E]">
+              <th class="p-2 sm:p-3 w-16 text-center rounded-l-xl">圖片</th>
               <th class="p-2 sm:p-3 w-8 text-center"></th>
               <th class="p-2 sm:p-3 w-10 text-center">確認</th>
               <th class="p-2 sm:p-3">商品名稱 / 類別</th>
@@ -167,11 +168,11 @@
           <tbody id="procurement-tbody" class="divide-y divide-[#EFECE9]"></tbody>
           <tfoot>
             <tr id="tfoot-foreign-row" class="bg-[#EFECE9] font-bold border-t-2 border-[#D5D0CC]">
-              <td id="tfoot-foreign-colspan" colspan="8" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">外幣採購總計金額：</td>
+              <td id="tfoot-foreign-colspan" colspan="9" class="p-2.5 sm:p-3 text-right text-[#7A726E] rounded-l-xl whitespace-nowrap">外幣採購總計金額：</td>
               <td id="procurement-local-total" class="p-2.5 sm:p-3 text-right text-[#B08889] text-sm sm:text-base font-black whitespace-nowrap">JP¥ 0</td>
             </tr>
             <tr class="bg-[#FAF9F7] font-bold text-xs text-[#7A726E] border-t border-[#D5D0CC]">
-              <td id="tfoot-twd-colspan" colspan="8" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">台幣總計金額 (含外幣換算與台幣商品)：</td>
+              <td id="tfoot-twd-colspan" colspan="9" class="p-2.5 sm:p-3 text-right rounded-l-xl whitespace-nowrap">台幣總計金額 (含外幣換算與台幣商品)：</td>
               <td id="procurement-twd-total" class="p-2.5 sm:p-3 text-right text-[#8F9E93] text-sm sm:text-base font-black whitespace-nowrap">NT$ 0</td>
             </tr>
           </tfoot>
@@ -321,6 +322,15 @@
         <button type="button" onclick="closeWallProduct()" class="flex-1 py-2.5 bg-[#E2DEDA] text-[#4A4543] font-bold rounded-xl text-sm">取消</button>
         <button type="button" id="wp-save-btn" onclick="saveWallProduct()" class="flex-1 py-2.5 bg-[#8F9E93] text-white font-bold rounded-xl text-sm">確認上架</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 採購清單：商品圖片放大 -->
+  <div id="procurement-image-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-80 z-50 flex items-center justify-center p-4" onclick="closeProcurementImage()">
+    <div class="bg-white p-3 rounded-3xl shadow-2xl max-w-md w-full space-y-2" onclick="event.stopPropagation()">
+      <img id="procurement-image-full" src="" alt="" class="w-full rounded-2xl object-contain" style="max-height: 70vh;">
+      <p id="procurement-image-caption" class="text-sm font-bold text-[#4A4543] text-center"></p>
+      <button type="button" onclick="closeProcurementImage()" class="w-full py-2.5 bg-[#E2DEDA] text-[#4A4543] font-bold rounded-xl text-sm">關閉</button>
     </div>
   </div>
 
@@ -1273,7 +1283,7 @@
         if (thSubtotal) thSubtotal.innerHTML = `小計 (NT$)`;
         if (tfootForeignRow) tfootForeignRow.classList.add("hidden");
         if (tfootTwdColspan) {
-          tfootTwdColspan.colSpan = 7;
+          tfootTwdColspan.colSpan = 8;
           tfootTwdColspan.innerText = "餅乾訂購總計金額 (NT$)：";
         }
       } else {
@@ -1283,7 +1293,7 @@
         if (thSubtotal) thSubtotal.innerHTML = `小計 (<span class="header-curr-label">${currencySymbol}</span> / NT$)`;
         if (tfootForeignRow) tfootForeignRow.classList.remove("hidden");
         if (tfootTwdColspan) {
-          tfootTwdColspan.colSpan = 8;
+          tfootTwdColspan.colSpan = 9;
           tfootTwdColspan.innerText = "台幣總計金額 (含外幣換算與台幣商品)：";
         }
       }
@@ -1470,7 +1480,13 @@
         const subtotalText = isCookie ? `NT$ ${subtotal.toLocaleString()}` : `${currencySymbol} ${subtotal.toLocaleString()}`;
         const safeCategory = (item.category || '').replace(/'/g, "\\'");
 
+        const thumbSrc = (item.productId && catalog[item.productId] && catalog[item.productId].image) || "";
+        const thumbHtml = thumbSrc
+          ? `<img src="${thumbSrc}" draggable="false" loading="lazy" onclick="openProcurementImage('${item.productId}')" title="點擊放大" class="w-12 h-12 sm:w-14 sm:h-14 object-contain bg-white rounded-lg border border-[#EFECE9] cursor-zoom-in mx-auto ${checked ? 'opacity-50' : ''}">`
+          : `<div class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-[#EFECE9] flex items-center justify-center text-[#A39E9A] mx-auto"><i class="fa-regular fa-image"></i></div>`;
+
         tr.innerHTML = `
+          <td class="p-1.5 sm:p-2 text-center">${thumbHtml}</td>
           <td class="p-2 sm:p-3 text-center text-[#A39E9A]">${isQtySort ? '' : '<i class="fa-solid fa-grip-vertical text-xs sm:text-sm"></i>'}</td>
           <td class="p-2 sm:p-3 text-center"><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleProcurementChecked('${k}', this.checked)" class="w-4 h-4 text-[#8F9E93] rounded border-[#D5D0CC]"></td>
           <td class="p-2 sm:p-3 font-bold text-[#4A4543]">
@@ -1509,6 +1525,19 @@
 
       currentProcurementMap = filteredMap;
       calculateTotals(filteredMap);
+    };
+
+    window.openProcurementImage = function(productId) {
+      const prod = catalog[productId];
+      if (!prod || !prod.image) return;
+      document.getElementById("procurement-image-full").src = prod.image;
+      document.getElementById("procurement-image-caption").innerText = [prod.name, prod.spec].filter(Boolean).join(" / ");
+      document.getElementById("procurement-image-modal").classList.remove("hidden");
+    };
+
+    window.closeProcurementImage = function() {
+      document.getElementById("procurement-image-modal").classList.add("hidden");
+      document.getElementById("procurement-image-full").src = "";
     };
 
     function reorderProcurement(draggedKey, targetKey, currentKeys) {
